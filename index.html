@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>載貨路線規劃工具</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="theme-color" content="#2C3D2E" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="載貨路線" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #F7F5F0;
+    color: #2C3D2E;
+  }
+  .app { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 66px; }
+  header { background: #2C3D2E; color: #F5F1E6; padding: 14px 18px; }
+  header h1 { font-size: 17px; font-weight: 600; margin: 0 0 2px; }
+  header p { font-size: 12px; margin: 0; color: #C9D6C4; }
+  .tabs {
+    display: flex; border-top: 1px solid #DDD8CB; background: #FDFCF9;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+  }
+  .tab-btn {
+    flex: 1; background: transparent; border: none; border-radius: 0;
+    padding: 20px 8px; font-size: 15px; font-weight: 600; color: #7A7462;
+    border-bottom: 3px solid transparent; cursor: pointer; min-height: 64px;
+  }
+  .tab-btn.active { color: #2C3D2E; border-bottom-color: #C89B3C; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .layout { display: flex; flex: 1; flex-direction: column; }
+  @media (min-width: 800px) {
+    .layout { flex-direction: row; }
+    #map { flex: 1; }
+    .sidebar { width: 360px; }
+  }
+  #map { height: 380px; width: 100%; }
+  .sidebar { background: #FDFCF9; border-top: 1px solid #DDD8CB; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .search-row { display: flex; gap: 6px; }
+  input[type="text"], input[type="tel"], textarea, select {
+    flex: 1; padding: 9px 10px; border: 1px solid #C9C3B2; border-radius: 6px;
+    font-size: 14px; background: #fff; font-family: inherit;
+  }
+  select { width: 100%; }
+  textarea { resize: vertical; min-height: 44px; }
+  button { border: none; border-radius: 6px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-primary { background: #C89B3C; color: #2C1E05; }
+  .btn-primary:disabled { background: #E2D6B0; color: #8A7F5E; cursor: not-allowed; }
+  .btn-secondary { background: #E9E4D6; color: #2C3D2E; }
+  .btn-danger-text { background: transparent; color: #A34A3A; padding: 4px 8px; font-size: 12px; }
+  .btn-danger-text.locked { color: #B9B4A5; cursor: not-allowed; }
+  .del-select-checkbox { flex-shrink: 0; width: 22px; height: 22px; cursor: pointer; }
+  .db-item.marked-delete { background: #FDECEA; border-color: #EA0000; }
+  #deleteBar {
+    display: none; position: fixed; left: 0; right: 0; bottom: 65px;
+    background: #EA0000; color: #fff; font-weight: 700; font-size: 15px;
+    text-align: center; border: none; padding: 16px; cursor: pointer; z-index: 999;
+  }
+  #deleteBar.show { display: block; }
+  #deleteModeToggleBtn { border: 2px solid #2C3D2E; }
+  #deleteModeToggleBtn.active { background: #2C3D2E; color: #fff; }
+  .btn-link-text { background: transparent; color: #4A5D45; padding: 4px 8px; font-size: 12px; }
+  .hint { font-size: 12px; color: #7A7462; line-height: 1.5; }
+  .stop-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 640px; overflow-y: auto; }
+  .db-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 500px; overflow-y: auto; }
+  .stop-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #E4DFD1; border-radius: 6px; padding: 21px 56px 21px 9px; }
+  .db-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #E4DFD1; border-radius: 6px; padding: 21px 56px 21px 9px; }
+  .db-item.selected { background: #FBF3E1; border-color: #C89B3C; }
+  .selected-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #8A6A1E; background: #F2E2B8; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+  .stop-badge { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #4A5D45; color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .stop-badge.depot { background: #C89B3C; }
+  .stop-name { flex: 1; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stop-nav-btn { flex-shrink: 0; background: #2C5F4A; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .stop-done-btn { flex-shrink: 0; background: #E9E4D6; color: #2C3D2E; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .stop-done-btn.done { background: #4A5D45; color: #fff; }
+  .stop-remove-btn { flex-shrink: 0; background: transparent; color: #A34A3A; border: none; font-size: 16px; font-weight: 700; padding: 4px 6px; cursor: pointer; }
+  .stop-item.completed { opacity: 0.55; }
+  .stop-item.completed .stop-name { text-decoration: line-through; }
+  .db-info { flex: 1; min-width: 0; }
+  .db-info .db-name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .db-info .db-note { font-size: 11px; color: #7A7462; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .phone-link { color: #2C5F4A; font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; padding: 4px 6px; border: 1px solid #C8DED2; border-radius: 4px; background: #F0F7F3; }
+  .toggle-add-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: none; background: #4A5D45; color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1; }
+  .toggle-add-btn.selected { background: #A34A3A; }
+  .actions-row { display: flex; gap: 8px; }
+  .actions-row button { flex: 1; }
+  .result-box { background: #EFF3E9; border: 1px solid #CFDBC3; border-radius: 8px; padding: 10px 12px; display: none; }
+  .result-box.show { display: block; }
+  .result-box .stat { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
+  .result-box .stat b { font-size: 15px; }
+  .error-msg { font-size: 12px; color: #A34A3A; display: none; }
+  .error-msg.show { display: block; }
+  .empty-state { font-size: 12px; color: #9A9483; text-align: center; padding: 10px 0; }
+  .form-box { background: #fff; border: 1px solid #E4DFD1; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .sticky-form { }
+  .db-list-header { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0 8px; user-select: none; }
+  .db-list-arrow { font-size: 48px; line-height: 1; color: #7A7462; transition: transform 0.15s ease; display: inline-block; }
+  .db-list-arrow.collapsed { transform: rotate(-90deg); }
+  .collapsible-body.collapsed { display: none; }
+  .field-label { font-size: 11px; color: #7A7462; font-weight: 600; }
+  .nav-box { background: #2C3D2E; color: #F5F1E6; border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 6px; }
+  .nav-box.show { display: flex; }
+  .nav-instruction { font-size: 16px; font-weight: 600; }
+  .nav-dist { font-size: 13px; color: #C9D6C4; }
+  .nav-steps { max-height: 160px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  .nav-step-item { padding: 4px 6px; border-radius: 4px; }
+  .nav-step-item.current { background: rgba(200,155,60,0.35); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>載貨路線規劃工具</h1>
+    <p>常用載貨點資料庫、路線規劃、逐站開啟 Google Maps 導航</p>
+  </header>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="db">載貨點資料庫</button>
+    <button class="tab-btn" data-tab="route">今日路線</button>
+  </div>
+
+  <div class="layout">
+    <div id="map"></div>
+    <div class="sidebar">
+
+      <div class="panel active" id="panel-db">
+        <div class="hint" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <span>地圖預設收起，需要時再展開查看所有點位。</span>
+          <button class="btn-secondary" id="toggleDbMapBtn" style="padding:5px 10px; font-size:12px; white-space:nowrap;">顯示地圖</button>
+        </div>
+
+        <div style="font-size:13px; font-weight:600; margin:10px 0 6px;">已儲存的載貨點（<span id="dbCount">0</span>）</div>
+        <button id="deleteBar">刪除 <span id="deleteBarCount">0</span> 個地點</button>
+        <div class="search-row" style="margin-bottom:8px;">
+          <input type="text" id="dbSearchFilter" placeholder="搜尋..." style="flex: 0 1 35%;" />
+          <button class="btn-secondary" id="openAddFormBtn" style="flex-shrink:0; white-space:nowrap;">＋ 新增載貨點</button>
+          <button class="btn-secondary" id="deleteModeToggleBtn" title="切換刪除模式" style="flex-shrink:0; white-space:nowrap;">🗑️ 刪除</button>
+        </div>
+        <div class="search-row" id="deleteSelectRow" style="display:none; align-items:center; gap:10px; margin-bottom:8px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; white-space:nowrap;">
+            <input type="checkbox" id="selectAllCheckbox" style="width:18px; height:18px;" /> 全選
+          </label>
+          <div style="font-size:13px; color:#7A7462;">已選 <span id="selectedCount">0</span> 個</div>
+        </div>
+        <ul class="db-list" id="dbList"></ul>
+        <div class="empty-state" id="dbEmpty">尚未儲存任何載貨點</div>
+        <div class="hint" style="margin-top:8px;">資料儲存在這台電腦這個瀏覽器裡，換電腦或清除瀏覽器資料會遺失，建議定期用「匯出」備份。</div>
+
+        <div class="actions-row">
+          <button class="btn-secondary" id="exportBtn">匯出Excel備份</button>
+          <button class="btn-secondary" id="importBtn">匯入Excel備份</button>
+        </div>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.json" style="display:none;" />
+
+        <div class="form-box collapsible-body collapsed" id="addFormBody">
+          <button class="btn-secondary" id="dbUseMyLocationBtn" type="button">📍 定位目前位置</button>
+          <div class="field-label">名稱（例如：陳大哥－濁水村）</div>
+          <input type="text" id="dbName" placeholder="輸入名稱" />
+          <div class="field-label">地址（用來搜尋定位）</div>
+          <div class="search-row">
+            <input type="text" id="dbAddress" placeholder="輸入地址或地標" />
+            <button class="btn-secondary" id="dbSearchBtn">定位</button>
+          </div>
+          <div class="hint" id="dbCoordHint">尚未定位，請先按「定位」，或直接點地圖選位置</div>
+          <div class="field-label">或直接輸入經緯度（緯度, 經度）</div>
+          <div class="search-row">
+            <input type="text" id="dbLatLng" placeholder="例如：23.7999, 120.6844" />
+            <button class="btn-secondary" id="dbLatLngBtn">套用</button>
+          </div>
+          <div class="field-label">電話（選填，會顯示為可直接撥號的連結）</div>
+          <input type="tel" id="dbPhone" placeholder="例如：0912345678 或 049-2345678" />
+          <div class="field-label">備註</div>
+          <input type="text" id="dbNote" placeholder="其他備註（選填）" />
+          <div class="actions-row">
+            <button class="btn-primary" id="dbSaveBtn">新增載貨點</button>
+            <button class="btn-secondary" id="dbCancelEditBtn" style="display:none;">取消編輯</button>
+          </div>
+          <div class="error-msg" id="dbError">請先輸入名稱，並完成定位（搜尋地址或點地圖）。</div>
+        </div>
+      </div>
+
+      <div class="panel" id="panel-route">
+        <div class="hint">出發地與終點設定一次即可長期沿用，之後只需從資料庫勾選中途要跑的載貨點。</div>
+
+        <div class="form-box">
+          <div class="field-label">出發地（固定，設定一次即可）</div>
+          <select id="startDbSelect"><option value="">-- 從資料庫選擇 --</option></select>
+          <div class="hint" id="startHint">尚未設定出發地，將以第一個加入的載貨點當作出發點</div>
+        </div>
+
+        <div>
+          <div style="font-size:13px; font-weight:600; margin-bottom:6px;">今日途經點（<span id="stopCount">0</span>）</div>
+          <ul class="stop-list" id="stopList"></ul>
+          <div class="empty-state" id="emptyState">尚未選取任何載貨點</div>
+        </div>
+
+        <div class="form-box">
+          <div class="field-label">終點（選填，未設定則路線在最後一個載貨點結束）</div>
+          <select id="endDbSelect"><option value="">-- 未設定 --</option></select>
+          <div class="hint" id="endHint">未設定終點</div>
+        </div>
+        <div class="actions-row">
+          <button class="btn-primary" id="routeBtn" disabled>規劃最佳路線</button>
+          <button class="btn-secondary" id="clearBtn">清空路線</button>
+        </div>
+        <div class="error-msg" id="routeError">路線規劃失敗，請稍後再試（免費路線服務偶爾會忙線）。</div>
+        <div class="result-box" id="resultBox">
+          <div class="stat"><span>建議停靠順序</span><b id="stopOrderCount">-</b></div>
+          <div class="stat"><span>總距離</span><b id="totalDist">-</b></div>
+          <div class="stat"><span>預估行車時間</span><b id="totalTime">-</b></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="addFormOverlay" style="display:none; position:fixed; inset:0; background:#F7F5F0; z-index:1500; flex-direction:column; overflow-y:auto;">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#2C3D2E; color:#fff; position:sticky; top:0; z-index:2;">
+    <div style="font-weight:700; font-size:15px;" id="addFormOverlayTitle">新增載貨點</div>
+    <button class="btn-secondary" id="addFormCloseBtn" style="padding:8px 14px;">✕ 關閉</button>
+  </div>
+  <div id="addFormMapSlot" style="width:100%;"></div>
+  <div id="addFormFieldsSlot" style="padding:14px;"></div>
+</div>
+
+<div id="dupModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#FDFCF9; border-radius:10px; padding:16px; max-width:360px; width:100%; display:flex; flex-direction:column; gap:10px;">
+    <div style="font-size:15px; font-weight:700; color:#2C3D2E;">發現重複座標的載貨點</div>
+    <div class="hint" id="dupModalMessage">-</div>
+    <button class="btn-primary" id="dupOverwriteBtn">覆蓋（用匯入的資料更新舊資料）</button>
+    <button class="btn-secondary" id="dupKeepBothBtn">保留（新舊都留，新增為獨立項目）</button>
+    <button class="btn-secondary" id="dupNewOnlyBtn">匯入最新的（僅匯入沒有的載貨地點）</button>
+    <button class="btn-danger-text" id="dupCancelBtn">取消匯入</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+  var STORAGE_KEY = 'cargoRouteDB_v1';
+  var ENDPOINT_KEY = 'cargoRouteEndpoints_v1';
+  var map = L.map('map').setView([23.7999, 120.6844], 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var db = [];
+  var stops = [];
+  var routeSettings = { start: null, end: null };
+  var markers = [];
+  var dbMarkers = [];
+  var routeLine = null;
+  var nextDbId = 1;
+  var nextStopId = 1;
+  var editingDbId = null;
+  var markedForDeleteIds = [];
+  var deleteMode = false;
+  var pendingCoord = null;
+  var previewMarker = null;
+
+  function loadDB() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        db = JSON.parse(raw);
+        var maxId = 0;
+        db.forEach(function(d) { if (d.id > maxId) maxId = d.id; });
+        nextDbId = maxId + 1;
+      }
+    } catch (e) { db = []; }
+  }
+
+  function saveDB() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    } catch (e) {
+      alert('儲存失敗，瀏覽器儲存空間可能已滿或不支援。');
+    }
+  }
+
+  function loadEndpoints() {
+    try {
+      var raw = localStorage.getItem(ENDPOINT_KEY);
+      if (raw) routeSettings = JSON.parse(raw);
+    } catch (e) { routeSettings = { start: null, end: null }; }
+  }
+
+  function saveEndpoints() {
+    try {
+      localStorage.setItem(ENDPOINT_KEY, JSON.stringify(routeSettings));
+    } catch (e) {}
+  }
+
+  function refreshEndpointSelects() {
+    var startSel = document.getElementById('startDbSelect');
+    var endSel = document.getElementById('endDbSelect');
+    var startVal = routeSettings.start ? routeSettings.start.dbId : '';
+    var endVal = routeSettings.end ? routeSettings.end.dbId : '';
+
+    startSel.innerHTML = '<option value="">-- 從資料庫選擇 --</option>';
+    endSel.innerHTML = '<option value="">-- 未設定 --</option>';
+    db.forEach(function(d) {
+      var o1 = document.createElement('option');
+      o1.value = d.id; o1.textContent = d.name;
+      startSel.appendChild(o1);
+      var o2 = document.createElement('option');
+      o2.value = d.id; o2.textContent = d.name;
+      endSel.appendChild(o2);
+    });
+    startSel.value = startVal;
+    endSel.value = endVal;
+
+    document.getElementById('startHint').textContent = routeSettings.start
+      ? '目前出發地：' + routeSettings.start.name
+      : '尚未設定出發地，將以第一個加入的途經點當作出發點';
+    document.getElementById('endHint').textContent = routeSettings.end
+      ? '目前終點：' + routeSettings.end.name
+      : '未設定終點，路線將在最後一個途經點結束';
+
+    refreshEndpointMarkers();
+    updateRouteButtonState();
+  }
+
+  document.getElementById('startDbSelect').addEventListener('change', function() {
+    var id = parseInt(this.value);
+    if (!id) {
+      routeSettings.start = null;
+    } else {
+      var d = db.find(function(x) { return x.id === id; });
+      routeSettings.start = d ? { dbId: d.id, lat: d.lat, lng: d.lng, name: d.name } : null;
+    }
+    saveEndpoints();
+    refreshEndpointSelects();
+    hideResult();
+  });
+
+  document.getElementById('endDbSelect').addEventListener('change', function() {
+    var id = parseInt(this.value);
+    if (!id) {
+      routeSettings.end = null;
+    } else {
+      var d = db.find(function(x) { return x.id === id; });
+      routeSettings.end = d ? { dbId: d.id, lat: d.lat, lng: d.lng, name: d.name } : null;
+    }
+    saveEndpoints();
+    refreshEndpointSelects();
+    hideResult();
+  });
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(function(b) {
+      b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+    });
+    document.querySelectorAll('.panel').forEach(function(p) {
+      p.classList.toggle('active', p.id === 'panel-' + tab);
+    });
+    if (typeof updateMapVisibility === 'function') updateMapVisibility();
+  }
+  document.querySelectorAll('.tab-btn').forEach(function(b) {
+    b.addEventListener('click', function() { switchTab(b.getAttribute('data-tab')); });
+  });
+
+  function refreshDbMarkers() {
+    dbMarkers.forEach(function(m) { map.removeLayer(m); });
+    dbMarkers = [];
+    // 一旦已經選取任何今日途經點，就不再顯示資料庫裡其他所有點，保持地圖畫面乾淨
+    if (stops.length > 0) return;
+    db.forEach(function(d) {
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:20px;height:20px;border-radius:50%;background:#8A8470;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3);"></div>',
+        iconSize: [20, 20], iconAnchor: [10, 10]
+      });
+      var marker = L.marker([d.lat, d.lng], { icon: icon, opacity: 0.7 }).addTo(map);
+      marker.bindPopup(d.name);
+      dbMarkers.push(marker);
+    });
+  }
+
+  function refreshDbList() {
+    var list = document.getElementById('dbList');
+    var empty = document.getElementById('dbEmpty');
+    document.getElementById('dbCount').textContent = db.length;
+    list.innerHTML = '';
+
+    var query = (document.getElementById('dbSearchFilter').value || '').trim().toLowerCase();
+    var filtered = db.filter(function(d) {
+      if (!query) return true;
+      var haystack = ((d.name || '') + ' ' + (d.address || '') + ' ' + (d.note || '')).toLowerCase();
+      return haystack.indexOf(query) !== -1;
+    });
+
+    if (db.length === 0) {
+      empty.textContent = '尚未儲存任何載貨點';
+      empty.style.display = 'block';
+    } else if (filtered.length === 0) {
+      empty.textContent = '沒有符合搜尋條件的載貨點';
+      empty.style.display = 'block';
+    } else {
+      empty.style.display = 'none';
+    }
+
+    filtered.forEach(function(d) {
+      var isSelected = stops.some(function(s) { return s.dbId === d.id; });
+      var isMarked = markedForDeleteIds.indexOf(d.id) !== -1;
+      var li = document.createElement('li');
+      li.className = 'db-item' + (isSelected ? ' selected' : '') + (isMarked ? ' marked-delete' : '');
+      li.innerHTML =
+        '<div class="db-info"><div class="db-name">' + escapeHtml(d.name) + '</div>' +
+        '<div class="db-note">' + escapeHtml(d.note || d.address || '') + '</div></div>' +
+        (d.phone ? '<a class="phone-link" href="tel:' + escapeHtml(String(d.phone).replace(/\s+/g, '')) + '">📞 ' + escapeHtml(d.phone) + '</a>' : '') +
+        '<button class="toggle-add-btn' + (isSelected ? ' selected' : '') + '" data-toggle="' + d.id + '" title="' + (isSelected ? '從今日路線移除' : '加入今日路線') + '">' + (isSelected ? '－' : '＋') + '</button>' +
+        '<button class="btn-link-text" data-edit="' + d.id + '" title="編輯">⚙️</button>' +
+        (deleteMode ? '<input type="checkbox" class="del-select-checkbox" data-select="' + d.id + '"' + (isMarked ? ' checked' : '') + ' />' : '');
+      list.appendChild(li);
+    });
+    list.querySelectorAll('[data-edit]').forEach(function(btn) {
+      btn.addEventListener('click', function() { startEditDb(parseInt(btn.getAttribute('data-edit'))); });
+    });
+    list.querySelectorAll('[data-select]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var id = parseInt(cb.getAttribute('data-select'));
+        var idx = markedForDeleteIds.indexOf(id);
+        if (cb.checked && idx === -1) markedForDeleteIds.push(id);
+        else if (!cb.checked && idx !== -1) markedForDeleteIds.splice(idx, 1);
+        refreshDbList();
+        refreshDeleteBar();
+      });
+    });
+    if (deleteMode) {
+      var allSelected = filtered.length > 0 && filtered.every(function(d) { return markedForDeleteIds.indexOf(d.id) !== -1; });
+      document.getElementById('selectAllCheckbox').checked = allSelected;
+    }
+    list.querySelectorAll('[data-toggle]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = parseInt(btn.getAttribute('data-toggle'));
+        var already = stops.some(function(s) { return s.dbId === id; });
+        if (already) {
+          stops = stops.filter(function(s) { return s.dbId !== id; });
+        } else {
+          var d = db.find(function(x) { return x.id === id; });
+          if (d) stops.push({ id: nextStopId++, lat: d.lat, lng: d.lng, name: d.name, dbId: d.id });
+        }
+        refreshStopList();
+        refreshMarkers();
+        refreshDbList();
+        hideResult();
+      });
+    });
+  }
+
+  function showPreviewMarker(lat, lng, label) {
+    if (previewMarker) map.removeLayer(previewMarker);
+    var icon = L.divIcon({
+      className: '',
+      html: '<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:#D85A30;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>',
+      iconSize: [24, 24], iconAnchor: [12, 24]
+    });
+    previewMarker = L.marker([lat, lng], { icon: icon }).addTo(map);
+    previewMarker.bindPopup(label).openPopup();
+  }
+
+  function clearPreviewMarker() {
+    if (previewMarker) { map.removeLayer(previewMarker); previewMarker = null; }
+  }
+
+  function escapeHtml(s) {
+    var div = document.createElement('div');
+    div.textContent = s;
+    return div.innerHTML;
+  }
+
+  function refreshDeleteBar() {
+    var bar = document.getElementById('deleteBar');
+    var countEl = document.getElementById('deleteBarCount');
+    var selectedCountEl = document.getElementById('selectedCount');
+    countEl.textContent = markedForDeleteIds.length;
+    if (selectedCountEl) selectedCountEl.textContent = markedForDeleteIds.length;
+    bar.classList.toggle('show', deleteMode);
+  }
+
+  function setDeleteMode(on) {
+    deleteMode = on;
+    markedForDeleteIds = [];
+    document.getElementById('deleteSelectRow').style.display = on ? 'flex' : 'none';
+    var toggleBtn = document.getElementById('deleteModeToggleBtn');
+    toggleBtn.classList.toggle('active', on);
+    toggleBtn.textContent = on ? '✕ 取消' : '🗑️ 刪除';
+    if (on) document.getElementById('selectAllCheckbox').checked = false;
+    refreshDbList();
+    refreshDeleteBar();
+  }
+
+  document.getElementById('deleteModeToggleBtn').addEventListener('click', function() {
+    setDeleteMode(!deleteMode);
+  });
+
+  document.getElementById('selectAllCheckbox').addEventListener('change', function() {
+    var query = (document.getElementById('dbSearchFilter').value || '').trim().toLowerCase();
+    var filtered = db.filter(function(d) {
+      if (!query) return true;
+      var haystack = ((d.name || '') + ' ' + (d.address || '') + ' ' + (d.note || '')).toLowerCase();
+      return haystack.indexOf(query) !== -1;
+    });
+    if (this.checked) {
+      markedForDeleteIds = filtered.map(function(d) { return d.id; });
+    } else {
+      markedForDeleteIds = [];
+    }
+    refreshDbList();
+    refreshDeleteBar();
+  });
+
+  document.getElementById('deleteBar').addEventListener('click', function() {
+    if (markedForDeleteIds.length > 0) {
+      var idsToDelete = markedForDeleteIds.slice();
+      db = db.filter(function(d) { return idsToDelete.indexOf(d.id) === -1; });
+      stops = stops.filter(function(s) { return idsToDelete.indexOf(s.dbId) === -1; });
+      if (routeSettings.start && idsToDelete.indexOf(routeSettings.start.dbId) !== -1) routeSettings.start = null;
+      if (routeSettings.end && idsToDelete.indexOf(routeSettings.end.dbId) !== -1) routeSettings.end = null;
+      saveEndpoints();
+      saveDB();
+      refreshDbMarkers();
+      refreshStopList();
+      refreshMarkers();
+      refreshEndpointSelects();
+    }
+    setDeleteMode(false);
+  });
+
+  document.getElementById('dbSearchFilter').addEventListener('input', function() {
+    refreshDbList();
+  });
+
+  // 記住 #map 與 #addFormBody 原本在畫面上的位置，開啟/關閉覆蓋層時要能正確搬回去
+  var mapHomeParent = document.getElementById('map').parentNode;
+  var mapHomeNext = document.getElementById('map').nextSibling;
+  var formHomeParent = document.getElementById('addFormBody').parentNode;
+  var formHomeNext = document.getElementById('addFormBody').nextSibling;
+
+  function openAddForm(isEdit) {
+    document.getElementById('addFormOverlayTitle').textContent = isEdit ? '編輯載貨點' : '新增載貨點';
+    document.getElementById('addFormOverlay').style.display = 'flex';
+    document.getElementById('addFormMapSlot').appendChild(document.getElementById('map'));
+    document.getElementById('addFormFieldsSlot').appendChild(document.getElementById('addFormBody'));
+    document.getElementById('addFormBody').classList.remove('collapsed');
+    document.getElementById('map').style.display = '';
+    setTimeout(function() { map.invalidateSize(); }, 60);
+  }
+
+  function closeAddForm() {
+    document.getElementById('addFormOverlay').style.display = 'none';
+    if (mapHomeNext) mapHomeParent.insertBefore(document.getElementById('map'), mapHomeNext);
+    else mapHomeParent.appendChild(document.getElementById('map'));
+    if (formHomeNext) formHomeParent.insertBefore(document.getElementById('addFormBody'), formHomeNext);
+    else formHomeParent.appendChild(document.getElementById('addFormBody'));
+    document.getElementById('addFormBody').classList.add('collapsed');
+    setTimeout(function() { map.invalidateSize(); updateMapVisibility(); }, 60);
+  }
+
+  document.getElementById('openAddFormBtn').addEventListener('click', function() {
+    openAddForm(false);
+  });
+
+  document.getElementById('addFormCloseBtn').addEventListener('click', function() {
+    resetDbForm();
+  });
+
+  // 載貨點資料庫頁面的地圖預設收起，按這個按鈕才展開/收起（不影響今日路線頁面的地圖顯示）
+  var dbMapExpanded = false;
+
+  function updateMapVisibility() {
+    var activeBtn = document.querySelector('.tab-btn.active');
+    var activeTab = activeBtn ? activeBtn.getAttribute('data-tab') : 'db';
+    var mapEl = document.getElementById('map');
+    if (document.getElementById('addFormOverlay').style.display === 'flex') {
+      mapEl.style.display = '';
+      return;
+    }
+    if (activeTab === 'db' && !dbMapExpanded) {
+      mapEl.style.display = 'none';
+    } else {
+      mapEl.style.display = '';
+      setTimeout(function() { map.invalidateSize(); }, 60);
+    }
+  }
+
+  document.getElementById('toggleDbMapBtn').addEventListener('click', function() {
+    dbMapExpanded = !dbMapExpanded;
+    this.textContent = dbMapExpanded ? '隱藏地圖' : '顯示地圖';
+    updateMapVisibility();
+  });
+
+  document.getElementById('dbUseMyLocationBtn').addEventListener('click', function() {
+    var errBox = document.getElementById('dbError');
+    errBox.classList.remove('show');
+    if (!navigator.geolocation) {
+      errBox.textContent = '這個瀏覽器不支援定位功能，無法取得目前位置。';
+      errBox.classList.add('show');
+      return;
+    }
+    var btn = document.getElementById('dbUseMyLocationBtn');
+    btn.disabled = true;
+    btn.textContent = '定位中...';
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      btn.disabled = false;
+      btn.textContent = '📍 定位目前位置';
+      var lat = pos.coords.latitude;
+      var lng = pos.coords.longitude;
+      pendingCoord = { lat: lat, lng: lng };
+      document.getElementById('dbLatLng').value = lat.toFixed(5) + ', ' + lng.toFixed(5);
+      document.getElementById('dbCoordHint').textContent = '已使用目前位置：' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+      map.setView([lat, lng], 16);
+      showPreviewMarker(lat, lng, '目前位置');
+    }, function(err) {
+      btn.disabled = false;
+      btn.textContent = '📍 定位目前位置';
+      errBox.textContent = '無法取得目前位置，請確認已允許瀏覽器使用定位功能。';
+      errBox.classList.add('show');
+    }, { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+  });
+
+  function startEditDb(id) {
+    var d = db.find(function(x) { return x.id === id; });
+    if (!d) return;
+    editingDbId = id;
+    document.getElementById('dbName').value = d.name;
+    document.getElementById('dbAddress').value = d.address || '';
+    document.getElementById('dbPhone').value = d.phone || '';
+    document.getElementById('dbNote').value = d.note || '';
+    pendingCoord = { lat: d.lat, lng: d.lng };
+    document.getElementById('dbLatLng').value = d.lat.toFixed(5) + ', ' + d.lng.toFixed(5);
+    document.getElementById('dbCoordHint').textContent = '目前定位：' + d.lat.toFixed(5) + ', ' + d.lng.toFixed(5);
+    document.getElementById('dbSaveBtn').textContent = '儲存修改';
+    document.getElementById('dbCancelEditBtn').style.display = 'block';
+    openAddForm(true);
+    map.setView([d.lat, d.lng], 15);
+    showPreviewMarker(d.lat, d.lng, escapeHtml(d.name));
+  }
+
+  document.getElementById('dbCancelEditBtn').addEventListener('click', resetDbForm);
+
+  function resetDbForm() {
+    editingDbId = null;
+    pendingCoord = null;
+    document.getElementById('dbName').value = '';
+    document.getElementById('dbAddress').value = '';
+    document.getElementById('dbLatLng').value = '';
+    document.getElementById('dbPhone').value = '';
+    document.getElementById('dbNote').value = '';
+    document.getElementById('dbCoordHint').textContent = '尚未定位，請先按「定位」，或直接點地圖選位置';
+    document.getElementById('dbSaveBtn').textContent = '新增載貨點';
+    document.getElementById('dbCancelEditBtn').style.display = 'none';
+    document.getElementById('dbError').classList.remove('show');
+    clearPreviewMarker();
+    closeAddForm();
+  }
+
+  function geocodeQuery(q) {
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=tw&q=' + encodeURIComponent(q);
+    return fetch(url, { headers: { 'Accept-Language': 'zh-TW' } })
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      });
+  }
+
+  // 台灣鄉間地址常見「XX巷YY弄ZZ號」這類細節，Nominatim有時找不到門牌，
+  // 這裡自動去掉巷弄門牌號再試一次，通常能定位到街道／村里層級。
+  function simplifyAddress(q) {
+    var s = q.replace(/\d+(-\d+)?號.*$/, '').replace(/[巷弄]\S*/g, '').trim();
+    return s;
+  }
+
+  // 依序嘗試多種寫法來提高定位成功率：
+  // 原始地址 → 補上「南投縣」→ 簡化地址（去門牌巷弄）→ 簡化地址+補「南投縣」
+  function buildGeocodeCandidates(q) {
+    var candidates = [q];
+    var hasCounty = /(南投|台灣|臺灣)/.test(q);
+    if (!hasCounty) candidates.push('南投縣' + q);
+    var simplified = simplifyAddress(q);
+    if (simplified && simplified !== q) {
+      candidates.push(simplified);
+      if (!/(南投|台灣|臺灣)/.test(simplified)) candidates.push('南投縣' + simplified);
+    }
+    return candidates;
+  }
+
+  function geocodeWithFallback(candidates, idx) {
+    idx = idx || 0;
+    if (idx >= candidates.length) return Promise.resolve({ result: null, isSimplified: idx > 1 });
+    return geocodeQuery(candidates[idx]).then(function(data) {
+      if (data && data.length > 0) {
+        return { result: data[0], isSimplified: idx > 0 };
+      }
+      return geocodeWithFallback(candidates, idx + 1);
+    });
+  }
+
+  document.getElementById('dbSearchBtn').addEventListener('click', function() {
+    var q = document.getElementById('dbAddress').value.trim();
+    var errBox = document.getElementById('dbError');
+    errBox.classList.remove('show');
+    if (!q) {
+      errBox.textContent = '請先輸入地址。';
+      errBox.classList.add('show');
+      return;
+    }
+    var btn = document.getElementById('dbSearchBtn');
+    btn.disabled = true;
+    btn.textContent = '搜尋中...';
+
+    function applyResult(item, isSimplified) {
+      btn.disabled = false;
+      btn.textContent = '定位';
+      pendingCoord = { lat: parseFloat(item.lat), lng: parseFloat(item.lon) };
+      document.getElementById('dbLatLng').value = pendingCoord.lat.toFixed(5) + ', ' + pendingCoord.lng.toFixed(5);
+      document.getElementById('dbCoordHint').textContent = (isSimplified ? '（已嘗試簡化／補上縣名後）定位成功：' : '定位成功：') + pendingCoord.lat.toFixed(5) + ', ' + pendingCoord.lng.toFixed(5);
+      map.setView([pendingCoord.lat, pendingCoord.lng], 16);
+      showPreviewMarker(pendingCoord.lat, pendingCoord.lng, escapeHtml(q));
+    }
+
+    function showEmpty() {
+      btn.disabled = false;
+      btn.textContent = '定位';
+      errBox.textContent = '找不到這個地址，請換個關鍵字（例如只留村里＋路名）、或直接點地圖選位置、或用「定位目前位置」。';
+      errBox.classList.add('show');
+    }
+
+    function showNetworkFail(err) {
+      btn.disabled = false;
+      btn.textContent = '定位';
+      errBox.textContent = '搜尋服務暫時無法連線（' + err.message + '），請確認網路連線，或直接點地圖選位置。';
+      errBox.classList.add('show');
+    }
+
+    var candidates = buildGeocodeCandidates(q);
+    geocodeWithFallback(candidates).then(function(res) {
+      if (res.result) {
+        applyResult(res.result, res.isSimplified);
+      } else {
+        showEmpty();
+      }
+    }).catch(function(err) {
+      showNetworkFail(err);
+    });
+  });
+
+  document.getElementById('dbLatLngBtn').addEventListener('click', function() {
+    var raw = document.getElementById('dbLatLng').value.trim();
+    var errBox = document.getElementById('dbError');
+    errBox.classList.remove('show');
+    if (!raw) {
+      errBox.textContent = '請輸入經緯度，格式如：23.7999, 120.6844';
+      errBox.classList.add('show');
+      return;
+    }
+    var parts = raw.split(',').map(function(s) { return s.trim(); });
+    if (parts.length !== 2) {
+      errBox.textContent = '格式錯誤，請用「緯度, 經度」，例如：23.7999, 120.6844';
+      errBox.classList.add('show');
+      return;
+    }
+    var lat = parseFloat(parts[0]);
+    var lng = parseFloat(parts[1]);
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      errBox.textContent = '經緯度數值不正確，緯度需在 -90~90 之間，經度需在 -180~180 之間。';
+      errBox.classList.add('show');
+      return;
+    }
+    pendingCoord = { lat: lat, lng: lng };
+    document.getElementById('dbCoordHint').textContent = '已套用經緯度：' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+    map.setView([lat, lng], 16);
+    showPreviewMarker(lat, lng, lat.toFixed(5) + ', ' + lng.toFixed(5));
+  });
+
+  map.on('click', function(e) {
+    if (document.getElementById('panel-db').classList.contains('active')) {
+      pendingCoord = { lat: e.latlng.lat, lng: e.latlng.lng };
+      document.getElementById('dbLatLng').value = pendingCoord.lat.toFixed(5) + ', ' + pendingCoord.lng.toFixed(5);
+      document.getElementById('dbCoordHint').textContent = '已選取地圖位置：' + pendingCoord.lat.toFixed(5) + ', ' + pendingCoord.lng.toFixed(5);
+      showPreviewMarker(pendingCoord.lat, pendingCoord.lng, pendingCoord.lat.toFixed(5) + ', ' + pendingCoord.lng.toFixed(5));
+    } else if (document.getElementById('panel-route').classList.contains('active')) {
+      var lat = e.latlng.lat, lng = e.latlng.lng;
+      var label = '臨時途經點 ' + (stops.length + 1);
+      addStop(lat, lng, label + '（' + lat.toFixed(4) + ', ' + lng.toFixed(4) + '）', null);
+    }
+  });
+
+  document.getElementById('dbSaveBtn').addEventListener('click', function() {
+    var name = document.getElementById('dbName').value.trim();
+    var address = document.getElementById('dbAddress').value.trim();
+    var phone = document.getElementById('dbPhone').value.trim();
+    var note = document.getElementById('dbNote').value.trim();
+    var errBox = document.getElementById('dbError');
+    errBox.classList.remove('show');
+    if (!name || !pendingCoord) {
+      errBox.textContent = '請先輸入名稱，並完成定位（搜尋地址或點地圖）。';
+      errBox.classList.add('show');
+      return;
+    }
+    if (editingDbId) {
+      var d = db.find(function(x) { return x.id === editingDbId; });
+      d.name = name; d.address = address; d.phone = phone; d.note = note; d.lat = pendingCoord.lat; d.lng = pendingCoord.lng;
+      // 同步更新已加入今日路線或設為起訖點的資料
+      stops.forEach(function(s) { if (s.dbId === d.id) { s.lat = d.lat; s.lng = d.lng; s.name = d.name; } });
+      if (routeSettings.start && routeSettings.start.dbId === d.id) {
+        routeSettings.start = { dbId: d.id, lat: d.lat, lng: d.lng, name: d.name };
+      }
+      if (routeSettings.end && routeSettings.end.dbId === d.id) {
+        routeSettings.end = { dbId: d.id, lat: d.lat, lng: d.lng, name: d.name };
+      }
+      saveEndpoints();
+      refreshStopList();
+      refreshMarkers();
+    } else {
+      db.push({ id: nextDbId++, name: name, address: address, phone: phone, note: note, lat: pendingCoord.lat, lng: pendingCoord.lng });
+    }
+    saveDB();
+    refreshDbList();
+    refreshDbMarkers();
+    refreshEndpointSelects();
+    resetDbForm();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', function() {
+    var rows = db.map(function(d) {
+      return {
+        '名稱': d.name || '',
+        '地址': d.address || '',
+        '電話': d.phone || '',
+        '備註': d.note || '',
+        '座標(緯度,經度)': d.lat + ', ' + d.lng
+      };
+    });
+    var ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 16 }, { wch: 24 }, { wch: 20 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '載貨點');
+    XLSX.writeFile(wb, '載貨點備份_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+  });
+
+  document.getElementById('importBtn').addEventListener('click', function() {
+    document.getElementById('importFile').click();
+  });
+
+  function parseCoordString(str) {
+    if (str === undefined || str === null) return null;
+    str = String(str).trim();
+    if (!str) return null;
+    var parts = str.split(',');
+    if (parts.length < 2) parts = str.split(/\s+/);
+    if (parts.length < 2) return null;
+    var lat = parseFloat(parts[0]);
+    var lng = parseFloat(parts[1]);
+    if (isNaN(lat) || isNaN(lng)) return null;
+    return { lat: lat, lng: lng };
+  }
+
+  function normalizeImportRow(row) {
+    var name = row['名稱'] || row['載貨點'] || row['地點'] || row.name || row.Name || '';
+    var address = row['地址'] || row['地點地址'] || row.address || row.Address || '';
+    var phone = row['電話'] || row['聯絡電話'] || row.phone || row.Phone || '';
+    var note = row['備註'] || row['說明'] || row.note || row.Note || '';
+
+    // 優先讀取合併的單一座標欄位（新格式），找不到才退回讀取分開的緯度/經度欄位（舊格式相容）
+    var coordRaw = row['座標(緯度,經度)'] || row['座標（緯度,經度）'] || row['座標'] || row.coordinates || row.coord || row.Coordinates;
+    var parsed = parseCoordString(coordRaw);
+    var lat, lng;
+    if (parsed) {
+      lat = parsed.lat;
+      lng = parsed.lng;
+    } else {
+      lat = parseFloat(row['緯度'] !== undefined ? row['緯度'] : (row.lat !== undefined ? row.lat : row.Lat));
+      lng = parseFloat(row['經度'] !== undefined ? row['經度'] : (row.lng !== undefined ? row.lng : row.Lng));
+    }
+    return {
+      name: String(name).trim(),
+      address: String(address || '').trim(),
+      phone: String(phone || '').trim(),
+      note: String(note || '').trim(),
+      lat: lat,
+      lng: lng
+    };
+  }
+
+  // 判定重複：兩點實際距離在10公尺以內視為同一個地點
+  function findDuplicateDbEntry(lat, lng) {
+    for (var i = 0; i < db.length; i++) {
+      if (haversine(db[i], { lat: lat, lng: lng }) < 10) return db[i];
+    }
+    return null;
+  }
+
+  function finalizeImport(newOnlyRows, duplicatePairs, mode) {
+    // newOnlyRows: 完全沒有重複座標的新資料，一律新增
+    // duplicatePairs: [{ row, existing }]，依mode決定處理方式
+    var addedCount = 0, updatedCount = 0;
+
+    newOnlyRows.forEach(function(row) {
+      db.push({ id: nextDbId++, name: row.name, address: row.address, phone: row.phone, note: row.note, lat: row.lat, lng: row.lng });
+      addedCount++;
+    });
+
+    if (mode === 'overwrite') {
+      duplicatePairs.forEach(function(pair) {
+        pair.existing.name = pair.row.name;
+        pair.existing.address = pair.row.address;
+        pair.existing.phone = pair.row.phone;
+        pair.existing.note = pair.row.note;
+        pair.existing.lat = pair.row.lat;
+        pair.existing.lng = pair.row.lng;
+        stops.forEach(function(s) { if (s.dbId === pair.existing.id) { s.lat = pair.existing.lat; s.lng = pair.existing.lng; s.name = pair.existing.name; } });
+        if (routeSettings.start && routeSettings.start.dbId === pair.existing.id) routeSettings.start = { dbId: pair.existing.id, lat: pair.existing.lat, lng: pair.existing.lng, name: pair.existing.name };
+        if (routeSettings.end && routeSettings.end.dbId === pair.existing.id) routeSettings.end = { dbId: pair.existing.id, lat: pair.existing.lat, lng: pair.existing.lng, name: pair.existing.name };
+        updatedCount++;
+      });
+      saveEndpoints();
+    } else if (mode === 'keepBoth') {
+      duplicatePairs.forEach(function(pair) {
+        db.push({ id: nextDbId++, name: pair.row.name, address: pair.row.address, phone: pair.row.phone, note: pair.row.note, lat: pair.row.lat, lng: pair.row.lng });
+        addedCount++;
+      });
+    }
+    // mode === 'newOnly'：duplicatePairs 全部略過，不做任何事
+
+    saveDB();
+    refreshDbList();
+    refreshDbMarkers();
+    refreshStopList();
+    refreshMarkers();
+    refreshEndpointSelects();
+
+    var msg = '匯入完成：新增 ' + addedCount + ' 筆';
+    if (updatedCount > 0) msg += '，更新 ' + updatedCount + ' 筆';
+    if (mode === 'newOnly' && duplicatePairs.length > 0) msg += '，略過 ' + duplicatePairs.length + ' 筆重複座標';
+    alert(msg + '。');
+  }
+
+  function importFromRows(rows) {
+    var validRows = [];
+    rows.forEach(function(row) {
+      var norm = normalizeImportRow(row);
+      if (norm.name && isFinite(norm.lat) && isFinite(norm.lng) &&
+          norm.lat >= -90 && norm.lat <= 90 && norm.lng >= -180 && norm.lng <= 180) {
+        validRows.push(norm);
+      }
+    });
+
+    if (validRows.length === 0) {
+      alert('沒有匯入任何資料，請確認檔案裡有「名稱」「緯度」「經度」欄位且格式正確。');
+      return;
+    }
+
+    var newOnlyRows = [];
+    var duplicatePairs = [];
+    validRows.forEach(function(row) {
+      var existing = findDuplicateDbEntry(row.lat, row.lng);
+      if (existing) {
+        duplicatePairs.push({ row: row, existing: existing });
+      } else {
+        newOnlyRows.push(row);
+      }
+    });
+
+    if (duplicatePairs.length === 0) {
+      finalizeImport(newOnlyRows, [], 'newOnly');
+      return;
+    }
+
+    // 有重複座標，跳出視窗詢問處理方式
+    document.getElementById('dupModalMessage').textContent =
+      '本次匯入 ' + validRows.length + ' 筆資料中，有 ' + duplicatePairs.length + ' 筆座標與資料庫裡既有的載貨點重複（10公尺內視為同一地點），其餘 ' + newOnlyRows.length + ' 筆為全新資料會直接新增。請選擇重複資料的處理方式：';
+    document.getElementById('dupModalOverlay').style.display = 'flex';
+
+    function closeModal() {
+      document.getElementById('dupModalOverlay').style.display = 'none';
+      document.getElementById('dupOverwriteBtn').onclick = null;
+      document.getElementById('dupKeepBothBtn').onclick = null;
+      document.getElementById('dupNewOnlyBtn').onclick = null;
+      document.getElementById('dupCancelBtn').onclick = null;
+    }
+
+    document.getElementById('dupOverwriteBtn').onclick = function() {
+      closeModal();
+      finalizeImport(newOnlyRows, duplicatePairs, 'overwrite');
+    };
+    document.getElementById('dupKeepBothBtn').onclick = function() {
+      closeModal();
+      finalizeImport(newOnlyRows, duplicatePairs, 'keepBoth');
+    };
+    document.getElementById('dupNewOnlyBtn').onclick = function() {
+      closeModal();
+      finalizeImport(newOnlyRows, duplicatePairs, 'newOnly');
+    };
+    document.getElementById('dupCancelBtn').onclick = function() {
+      closeModal();
+    };
+  }
+
+  document.getElementById('importFile').addEventListener('change', function(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var ext = file.name.split('.').pop().toLowerCase();
+
+    if (ext === 'json') {
+      var reader = new FileReader();
+      reader.onload = function() {
+        try {
+          var data = JSON.parse(reader.result);
+          if (!Array.isArray(data)) throw new Error('格式錯誤');
+          importFromRows(data.map(function(d) {
+            return { '名稱': d.name, '地址': d.address, '電話': d.phone, '備註': d.note, '緯度': d.lat, '經度': d.lng };
+          }));
+        } catch (err) {
+          alert('匯入失敗，檔案格式不正確。');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      var reader2 = new FileReader();
+      reader2.onload = function() {
+        try {
+          var data = new Uint8Array(reader2.result);
+          var wb = XLSX.read(data, { type: 'array' });
+          var firstSheetName = wb.SheetNames[0];
+          var sheet = wb.Sheets[firstSheetName];
+          var rows = XLSX.utils.sheet_to_json(sheet);
+          importFromRows(rows);
+        } catch (err) {
+          alert('匯入失敗，請確認是有效的Excel檔案（.xlsx）。');
+        }
+      };
+      reader2.readAsArrayBuffer(file);
+    }
+    e.target.value = '';
+  });
+
+  function refreshMarkers() {
+    markers.forEach(function(m) { map.removeLayer(m); });
+    markers = [];
+    stops.forEach(function(s, idx) {
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:26px;height:26px;border-radius:50%;background:#4A5D45;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">' + (idx + 1) + '</div>',
+        iconSize: [26, 26], iconAnchor: [13, 13]
+      });
+      var marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(map);
+      marker.bindPopup(s.name);
+      markers.push(marker);
+    });
+    refreshEndpointMarkers();
+    refreshDbMarkers();
+  }
+
+  var startMarker = null;
+  var endMarker = null;
+  function refreshEndpointMarkers() {
+    if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+    if (endMarker) { map.removeLayer(endMarker); endMarker = null; }
+    if (routeSettings.start) {
+      var sIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:28px;height:28px;border-radius:50%;background:#C89B3C;color:#2C1E05;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">起</div>',
+        iconSize: [28, 28], iconAnchor: [14, 14]
+      });
+      startMarker = L.marker([routeSettings.start.lat, routeSettings.start.lng], { icon: sIcon }).addTo(map);
+      startMarker.bindPopup('出發地：' + routeSettings.start.name);
+    }
+    if (routeSettings.end) {
+      var eIcon = L.divIcon({
+        className: '',
+        html: '<div style="width:28px;height:28px;border-radius:50%;background:#A34A3A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">終</div>',
+        iconSize: [28, 28], iconAnchor: [14, 14]
+      });
+      endMarker = L.marker([routeSettings.end.lat, routeSettings.end.lng], { icon: eIcon }).addTo(map);
+      endMarker.bindPopup('終點：' + routeSettings.end.name);
+    }
+  }
+
+  function refreshStopList() {
+    var list = document.getElementById('stopList');
+    var empty = document.getElementById('emptyState');
+    document.getElementById('stopCount').textContent = stops.length;
+    list.innerHTML = '';
+    empty.style.display = stops.length === 0 ? 'block' : 'none';
+    stops.forEach(function(s, idx) {
+      var li = document.createElement('li');
+      li.className = 'stop-item' + (s.completed ? ' completed' : '');
+      li.innerHTML = '<div class="stop-badge">' + (idx + 1) + '</div>' +
+        '<div class="stop-name">' + escapeHtml(s.name) + '</div>' +
+        '<button class="stop-nav-btn" data-nav="' + s.id + '" aria-label="開啟 Google Maps 導航至 ' + escapeHtml(s.name) + '">開啟導航</button>' +
+        '<button class="stop-done-btn' + (s.completed ? ' done' : '') + '" data-done="' + s.id + '">' + (s.completed ? '✓ 完成' : '完成') + '</button>' +
+        '<button class="stop-remove-btn" data-id="' + s.id + '" title="移除">✕</button>';
+      list.appendChild(li);
+    });
+    list.querySelectorAll('[data-nav]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = parseInt(btn.getAttribute('data-nav'));
+        var s = stops.find(function(x) { return x.id === id; });
+        if (!s) return;
+        var url = 'https://www.google.com/maps/dir/?api=1'
+          + '&destination=' + encodeURIComponent(s.lat + ',' + s.lng)
+          + '&travelmode=driving';
+        window.open(url, '_blank');
+      });
+    });
+    list.querySelectorAll('[data-done]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = parseInt(btn.getAttribute('data-done'));
+        var s = stops.find(function(x) { return x.id === id; });
+        if (!s) return;
+        s.completed = !s.completed;
+        refreshStopList();
+      });
+    });
+    list.querySelectorAll('.stop-remove-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var id = parseInt(btn.getAttribute('data-id'));
+        stops = stops.filter(function(s) { return s.id !== id; });
+        refreshStopList();
+        refreshMarkers();
+        updateRouteButtonState();
+        refreshDbList();
+        hideResult();
+      });
+    });
+    updateRouteButtonState();
+  }
+
+  function updateRouteButtonState() {
+    var total = stops.length + (routeSettings.start ? 1 : 0) + (routeSettings.end ? 1 : 0);
+    document.getElementById('routeBtn').disabled = total < 2;
+  }
+
+  function addStop(lat, lng, name, dbId) {
+    stops.push({ id: nextStopId++, lat: lat, lng: lng, name: name, dbId: dbId });
+    refreshStopList();
+    refreshMarkers();
+    refreshDbList();
+    hideResult();
+  }
+
+  document.getElementById('clearBtn').addEventListener('click', function() {
+    stops = [];
+    refreshStopList();
+    refreshMarkers();
+    refreshDbList();
+    hideResult();
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+  });
+
+  function hideResult() {
+    document.getElementById('resultBox').classList.remove('show');
+    document.getElementById('routeError').classList.remove('show');
+  }
+
+  function haversine(a, b) {
+    var R = 6371000;
+    var dLat = (b.lat - a.lat) * Math.PI / 180;
+    var dLng = (b.lng - a.lng) * Math.PI / 180;
+    var la1 = a.lat * Math.PI / 180;
+    var la2 = b.lat * Math.PI / 180;
+    var h = Math.sin(dLat/2)*Math.sin(dLat/2) + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)*Math.sin(dLng/2);
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function nearestNeighborOrder(points) {
+    var remaining = points.slice(1);
+    var order = [points[0]];
+    var current = points[0];
+    while (remaining.length > 0) {
+      var bestIdx = 0, bestDist = Infinity;
+      remaining.forEach(function(p, idx) {
+        var d = haversine(current, p);
+        if (d < bestDist) { bestDist = d; bestIdx = idx; }
+      });
+      current = remaining[bestIdx];
+      order.push(current);
+      remaining.splice(bestIdx, 1);
+    }
+    return order;
+  }
+
+  // 2-opt優化：反覆檢查路線中是否有交叉繞路的路段，若反轉後總距離變短就修正，
+  // 直到找不到能再改善的組合為止。fixStart/fixEnd為true時，該端點固定不動。
+  function twoOptImprove(route, fixStart, fixEnd) {
+    var n = route.length;
+    if (n < 4) return route;
+    route = route.slice();
+    var improved = true;
+    var iter = 0;
+    while (improved && iter < 300) {
+      improved = false;
+      iter++;
+      var iLo = fixStart ? 1 : 0;
+      var jHi = fixEnd ? n - 2 : n - 1;
+      for (var i = iLo; i <= jHi - 1; i++) {
+        for (var j = i + 1; j <= jHi; j++) {
+          var beforeLen = 0, afterLen = 0;
+          if (i > 0) beforeLen += haversine(route[i - 1], route[i]);
+          if (j < n - 1) beforeLen += haversine(route[j], route[j + 1]);
+          if (i > 0) afterLen += haversine(route[i - 1], route[j]);
+          if (j < n - 1) afterLen += haversine(route[i], route[j + 1]);
+          if (afterLen < beforeLen - 1e-6) {
+            var seg = route.slice(i, j + 1).reverse();
+            route = route.slice(0, i).concat(seg).concat(route.slice(j + 1));
+            improved = true;
+          }
+        }
+      }
+    }
+    return route;
+  }
+
+  function buildRoutePoints() {
+    var startPt = routeSettings.start ? { lat: routeSettings.start.lat, lng: routeSettings.start.lng, name: routeSettings.start.name } : null;
+    var endPt = routeSettings.end ? { lat: routeSettings.end.lat, lng: routeSettings.end.lng, name: routeSettings.end.name } : null;
+    var middle = stops.slice();
+    var head;
+    if (startPt) {
+      head = [startPt].concat(middle);
+    } else {
+      head = middle.slice();
+    }
+    if (head.length === 0 && !endPt) return null;
+    var orderedAll = head.length > 0 ? nearestNeighborOrder(head) : [];
+    if (endPt) orderedAll.push(endPt);
+    if (orderedAll.length < 2) return null;
+    orderedAll = twoOptImprove(orderedAll, !!startPt, !!endPt);
+    return { orderedAll: orderedAll, hasStart: !!startPt, hasEnd: !!endPt };
+  }
+
+  document.getElementById('routeBtn').addEventListener('click', function() {
+    hideResult();
+    var btn = document.getElementById('routeBtn');
+    var built = buildRoutePoints();
+    if (!built || built.orderedAll.length < 2) {
+      document.getElementById('routeError').textContent = '至少需要2個地點（含出發地／終點／途經點）才能規劃路線。';
+      document.getElementById('routeError').classList.add('show');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = '規劃中...';
+    var orderedAll = built.orderedAll;
+    var coordStr = orderedAll.map(function(s) { return s.lng + ',' + s.lat; }).join(';');
+    var url = 'https://router.project-osrm.org/route/v1/driving/' + coordStr + '?overview=full&geometries=geojson&steps=true';
+
+    fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+      btn.disabled = false;
+      btn.textContent = '規劃最佳路線';
+      document.getElementById('routeError').textContent = '路線規劃失敗，請稍後再試（免費路線服務偶爾會忙線）。';
+      if (!data || data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        document.getElementById('routeError').classList.add('show');
+        return;
+      }
+      var route = data.routes[0];
+
+      // 依有無固定起訖點，把中段途經點重新排序，起訖點本身不列入「今日途經點」清單
+      var startCount = built.hasStart ? 1 : 0;
+      var endCount = built.hasEnd ? 1 : 0;
+      stops = orderedAll.slice(startCount, orderedAll.length - endCount);
+      refreshStopList();
+      refreshMarkers();
+      refreshDbList();
+
+      if (routeLine) map.removeLayer(routeLine);
+      var latlngs = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+      routeLine = L.polyline(latlngs, { color: '#C89B3C', weight: 4, opacity: 0.85 }).addTo(map);
+      map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+
+      var distKm = (route.distance / 1000).toFixed(1);
+      var timeMin = Math.round(route.duration / 60);
+      document.getElementById('stopOrderCount').textContent = orderedAll.length + ' 站';
+      document.getElementById('totalDist').textContent = distKm + ' 公里';
+      document.getElementById('totalTime').textContent = timeMin + ' 分鐘';
+      document.getElementById('resultBox').classList.add('show');
+
+    }).catch(function() {
+      btn.disabled = false;
+      btn.textContent = '規劃最佳路線';
+      document.getElementById('routeError').textContent = '路線規劃失敗，請稍後再試（免費路線服務偶爾會忙線）。';
+      document.getElementById('routeError').classList.add('show');
+    });
+  });
+
+  function ensureDefaultEndpoints() {
+    var FLAG_KEY = 'cargoRouteDefaultInit_v1';
+    if (localStorage.getItem(FLAG_KEY)) return;
+    var defaultName = '南投縣名間鄉農會';
+    var entry = db.find(function(d) { return d.name === defaultName; });
+    if (!entry) {
+      entry = {
+        id: nextDbId++,
+        name: defaultName,
+        address: '南投縣名間鄉中正村彰南路26號',
+        note: '預設出發地／終點（座標為概略位置，建議之後用「定位」或地圖點選校正）',
+        lat: 23.7999,
+        lng: 120.6844
+      };
+      db.push(entry);
+      saveDB();
+    }
+    if (!routeSettings.start) {
+      routeSettings.start = { dbId: entry.id, lat: entry.lat, lng: entry.lng, name: entry.name };
+    }
+    if (!routeSettings.end) {
+      routeSettings.end = { dbId: entry.id, lat: entry.lat, lng: entry.lng, name: entry.name };
+    }
+    saveEndpoints();
+    localStorage.setItem(FLAG_KEY, '1');
+  }
+
+  loadDB();
+  loadEndpoints();
+  ensureDefaultEndpoints();
+  refreshDbList();
+  refreshDbMarkers();
+  refreshStopList();
+  refreshEndpointSelects();
+  updateMapVisibility();
+  refreshDeleteBar();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js').catch(function(err) {
+        console.log('Service worker 註冊失敗（不影響一般使用）：', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
