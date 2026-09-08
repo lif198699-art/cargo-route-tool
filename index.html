@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
-<meta name="theme-color" content="#2C3D2E" />
+<meta name="theme-color" content="#0d1117" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="載貨路線" />
@@ -17,24 +17,24 @@
   body {
     margin: 0;
     font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif;
-    background: #F7F5F0;
-    color: #2C3D2E;
+    background: #0d1117;
+    color: #e6edf3;
   }
   .app { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 66px; }
-  header { background: #2C3D2E; color: #F5F1E6; padding: 14px 18px; }
+  header { background: #161b22; color: #f0f6fc; padding: 14px 18px; border-bottom: 1px solid #30363d; }
   header h1 { font-size: 17px; font-weight: 600; margin: 0 0 2px; }
-  header p { font-size: 12px; margin: 0; color: #C9D6C4; }
+  header p { font-size: 12px; margin: 0; color: #8b949e; }
   .tabs {
-    display: flex; border-top: 1px solid #DDD8CB; background: #FDFCF9;
+    display: flex; border-top: 1px solid #30363d; background: #161b22;
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000;
     box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
   }
   .tab-btn {
     flex: 1; background: transparent; border: none; border-radius: 0;
-    padding: 20px 8px; font-size: 15px; font-weight: 600; color: #7A7462;
+    padding: 20px 8px; font-size: 15px; font-weight: 600; color: #8b949e;
     border-bottom: 3px solid transparent; cursor: pointer; min-height: 64px;
   }
-  .tab-btn.active { color: #2C3D2E; border-bottom-color: #C89B3C; }
+  .tab-btn.active { color: #f0f6fc; border-bottom-color: #58a6ff; }
   .panel { display: none; }
   .panel.active { display: block; }
   .layout { display: flex; flex: 1; flex-direction: column; }
@@ -44,76 +44,87 @@
     .sidebar { width: 360px; }
   }
   #map { height: 380px; width: 100%; }
-  .sidebar { background: #FDFCF9; border-top: 1px solid #DDD8CB; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .sidebar { background: #0d1117; border-top: 1px solid #30363d; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
   .search-row { display: flex; gap: 6px; }
   input[type="text"], input[type="tel"], textarea, select {
-    flex: 1; padding: 9px 10px; border: 1px solid #C9C3B2; border-radius: 6px;
-    font-size: 14px; background: #fff; font-family: inherit;
+    flex: 1; padding: 9px 10px; border: 1px solid #30363d; border-radius: 6px;
+    font-size: 14px; background: #161b22; color: #e6edf3; font-family: inherit;
   }
   select { width: 100%; }
   textarea { resize: vertical; min-height: 44px; }
   button { border: none; border-radius: 6px; padding: 9px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .btn-primary { background: #C89B3C; color: #2C1E05; }
-  .btn-primary:disabled { background: #E2D6B0; color: #8A7F5E; cursor: not-allowed; }
-  .btn-secondary { background: #E9E4D6; color: #2C3D2E; }
-  .btn-danger-text { background: transparent; color: #A34A3A; padding: 4px 8px; font-size: 12px; }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:disabled { background: #21262d; color: #6e7681; cursor: not-allowed; }
+  .btn-secondary { background: #21262d; color: #e6edf3; border: 1px solid #30363d; }
+  .btn-danger-text { background: transparent; color: #ff7b72; padding: 4px 8px; font-size: 12px; }
   .btn-danger-text.locked { color: #B9B4A5; cursor: not-allowed; }
   .del-select-checkbox { flex-shrink: 0; width: 22px; height: 22px; cursor: pointer; }
-  .db-item.marked-delete { background: #FDECEA; border-color: #EA0000; }
+  .db-item.marked-delete { background: #3d1f24; border-color: #f85149; }
   #deleteBar {
     display: none; position: fixed; left: 0; right: 0; bottom: 65px;
-    background: #EA0000; color: #fff; font-weight: 700; font-size: 15px;
+    background: #da3633; color: #fff; font-weight: 700; font-size: 15px;
     text-align: center; border: none; padding: 16px; cursor: pointer; z-index: 999;
   }
   #deleteBar.show { display: block; }
-  #deleteModeToggleBtn { border: 2px solid #2C3D2E; }
-  #deleteModeToggleBtn.active { background: #2C3D2E; color: #fff; }
-  .btn-link-text { background: transparent; color: #4A5D45; padding: 4px 8px; font-size: 12px; }
-  .hint { font-size: 12px; color: #7A7462; line-height: 1.5; }
+  #deleteModeToggleBtn { border: 2px solid #30363d; }
+  #deleteModeToggleBtn.active { background: #30363d; color: #fff; }
+  .btn-link-text { background: transparent; color: #58a6ff; padding: 4px 8px; font-size: 12px; }
+  .hint { font-size: 12px; color: #8b949e; line-height: 1.5; }
   .stop-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 640px; overflow-y: auto; }
   .db-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 500px; overflow-y: auto; }
-  .stop-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #E4DFD1; border-radius: 6px; padding: 21px 56px 21px 9px; }
-  .db-item { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #E4DFD1; border-radius: 6px; padding: 21px 56px 21px 9px; }
-  .db-item.selected { background: #FBF3E1; border-color: #C89B3C; }
-  .selected-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #8A6A1E; background: #F2E2B8; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
-  .stop-badge { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #4A5D45; color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .stop-badge.depot { background: #C89B3C; }
+  .stop-item { display: flex; align-items: center; gap: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 21px 56px 21px 9px; }
+  .db-item { display: flex; align-items: center; gap: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 21px 56px 21px 9px; }
+  .db-item.selected { background: #1c2d41; border-color: #58a6ff; }
+  .selected-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #79c0ff; background: #1f3b5b; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+  .stop-badge { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #388bfd; color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .stop-badge.depot { background: #a371f7; }
   .stop-name { flex: 1; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .stop-nav-btn { flex-shrink: 0; background: #2C5F4A; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
-  .stop-done-btn { flex-shrink: 0; background: #E9E4D6; color: #2C3D2E; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
-  .stop-done-btn.done { background: #4A5D45; color: #fff; }
-  .stop-remove-btn { flex-shrink: 0; background: transparent; color: #A34A3A; border: none; font-size: 16px; font-weight: 700; padding: 4px 6px; cursor: pointer; }
+  .stop-nav-btn { flex-shrink: 0; background: #1f6feb; color: #fff; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .stop-done-btn { flex-shrink: 0; background: #21262d; color: #e6edf3; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .stop-done-btn.done { background: #238636; color: #fff; }
+  .stop-remove-btn { flex-shrink: 0; background: transparent; color: #ff7b72; border: none; font-size: 16px; font-weight: 700; padding: 4px 6px; cursor: pointer; }
   .stop-item.completed { opacity: 0.55; }
   .stop-item.completed .stop-name { text-decoration: line-through; }
   .db-info { flex: 1; min-width: 0; }
   .db-info .db-name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .db-info .db-note { font-size: 11px; color: #7A7462; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .phone-link { color: #2C5F4A; font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; padding: 4px 6px; border: 1px solid #C8DED2; border-radius: 4px; background: #F0F7F3; }
-  .toggle-add-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: none; background: #4A5D45; color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1; }
-  .toggle-add-btn.selected { background: #A34A3A; }
+  .phone-link { color: #79c0ff; font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; padding: 4px 6px; border: 1px solid #1f6feb; border-radius: 4px; background: #12253f; }
+  .toggle-add-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: none; background: #238636; color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1; }
+  .toggle-add-btn.selected { background: #da3633; }
   .actions-row { display: flex; gap: 8px; }
   .actions-row button { flex: 1; }
-  .result-box { background: #EFF3E9; border: 1px solid #CFDBC3; border-radius: 8px; padding: 10px 12px; display: none; }
+  .result-box { background: #172b1b; border: 1px solid #238636; border-radius: 8px; padding: 10px 12px; display: none; }
   .result-box.show { display: block; }
   .result-box .stat { display: flex; justify-content: space-between; font-size: 13px; padding: 2px 0; }
   .result-box .stat b { font-size: 15px; }
-  .error-msg { font-size: 12px; color: #A34A3A; display: none; }
+  .error-msg { font-size: 12px; color: #ff7b72; display: none; }
   .error-msg.show { display: block; }
-  .empty-state { font-size: 12px; color: #9A9483; text-align: center; padding: 10px 0; }
-  .form-box { background: #fff; border: 1px solid #E4DFD1; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .empty-state { font-size: 12px; color: #6e7681; text-align: center; padding: 10px 0; }
+  .form-box { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .sticky-form { }
   .db-list-header { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0 8px; user-select: none; }
   .db-list-arrow { font-size: 48px; line-height: 1; color: #7A7462; transition: transform 0.15s ease; display: inline-block; }
   .db-list-arrow.collapsed { transform: rotate(-90deg); }
   .collapsible-body.collapsed { display: none; }
-  .field-label { font-size: 11px; color: #7A7462; font-weight: 600; }
-  .nav-box { background: #2C3D2E; color: #F5F1E6; border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 11px; color: #8b949e; font-weight: 600; }
+  .nav-box { background: #161b22; color: #e6edf3; border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 6px; }
   .nav-box.show { display: flex; }
   .nav-instruction { font-size: 16px; font-weight: 600; }
   .nav-dist { font-size: 13px; color: #C9D6C4; }
   .nav-steps { max-height: 160px; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
   .nav-step-item { padding: 4px 6px; border-radius: 4px; }
   .nav-step-item.current { background: rgba(200,155,60,0.35); }
+  input::placeholder, textarea::placeholder { color: #6e7681; }
+  select option { background: #161b22; color: #e6edf3; }
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid #1f6feb;
+    outline-offset: 1px;
+    border-color: #58a6ff;
+  }
+  button:focus-visible, a:focus-visible {
+    outline: 2px solid #58a6ff;
+    outline-offset: 2px;
+  }
 </style>
 </head>
 <body>
@@ -223,8 +234,8 @@
   </div>
 </div>
 
-<div id="addFormOverlay" style="display:none; position:fixed; inset:0; background:#F7F5F0; z-index:1500; flex-direction:column; overflow-y:auto;">
-  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#2C3D2E; color:#fff; position:sticky; top:0; z-index:2;">
+<div id="addFormOverlay" style="display:none; position:fixed; inset:0; background:#0d1117; z-index:1500; flex-direction:column; overflow-y:auto;">
+  <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#161b22; color:#fff; position:sticky; top:0; z-index:2; border-bottom:1px solid #30363d;">
     <div style="font-weight:700; font-size:15px;" id="addFormOverlayTitle">新增載貨點</div>
     <button class="btn-secondary" id="addFormCloseBtn" style="padding:8px 14px;">✕ 關閉</button>
   </div>
@@ -233,8 +244,8 @@
 </div>
 
 <div id="dupModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:16px;">
-  <div style="background:#FDFCF9; border-radius:10px; padding:16px; max-width:360px; width:100%; display:flex; flex-direction:column; gap:10px;">
-    <div style="font-size:15px; font-weight:700; color:#2C3D2E;">發現重複座標的載貨點</div>
+  <div style="background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; max-width:360px; width:100%; display:flex; flex-direction:column; gap:10px;">
+    <div style="font-size:15px; font-weight:700; color:#f0f6fc;">發現重複座標的載貨點</div>
     <div class="hint" id="dupModalMessage">-</div>
     <button class="btn-primary" id="dupOverwriteBtn">覆蓋（用匯入的資料更新舊資料）</button>
     <button class="btn-secondary" id="dupKeepBothBtn">保留（新舊都留，新增為獨立項目）</button>
@@ -1276,7 +1287,7 @@
 
       if (routeLine) map.removeLayer(routeLine);
       var latlngs = route.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-      routeLine = L.polyline(latlngs, { color: '#C89B3C', weight: 4, opacity: 0.85 }).addTo(map);
+      routeLine = L.polyline(latlngs, { color: '#58a6ff', weight: 4, opacity: 0.9 }).addTo(map);
       map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
 
       var distKm = (route.distance / 1000).toFixed(1);
@@ -1295,23 +1306,24 @@
   });
 
   function ensureDefaultEndpoints() {
-    var FLAG_KEY = 'cargoRouteDefaultInit_v1';
+    var FLAG_KEY = 'cargoRouteDefaultInit_v2';
     if (localStorage.getItem(FLAG_KEY)) return;
-    var defaultName = '南投縣名間鄉農會';
+    var defaultName = '名農';
     var entry = db.find(function(d) { return d.name === defaultName; });
     if (!entry) {
       entry = {
         id: nextDbId++,
         name: defaultName,
-        address: '南投縣名間鄉中正村彰南路26號',
-        note: '預設出發地／終點（座標為概略位置，建議之後用「定位」或地圖點選校正）',
-        lat: 23.7999,
-        lng: 120.6844
+        address: '',
+        note: '預設出發地',
+        lat: 23.836946814809462,
+        lng: 120.70398829426018
       };
       db.push(entry);
       saveDB();
     }
-    if (!routeSettings.start) {
+    // 只更新舊版預設出發地；若使用者已自行設定其他出發地則保留。
+    if (!routeSettings.start || routeSettings.start.name === '南投縣名間鄉農會') {
       routeSettings.start = { dbId: entry.id, lat: entry.lat, lng: entry.lng, name: entry.name };
     }
     if (!routeSettings.end) {
