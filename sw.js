@@ -1,4 +1,4 @@
-var CACHE_NAME = 'cargo-route-v1';
+var CACHE_NAME = 'cargo-route-v7';
 var APP_SHELL = [
   './',
   './index.html',

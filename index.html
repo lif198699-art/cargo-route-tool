@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>載貨路線規劃工具</title>
+<title>路線規劃器 2.0 更新:2026.9.12</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -43,7 +43,8 @@
     #map { flex: 1; }
     .sidebar { width: 360px; }
   }
-  #map { height: 380px; width: 100%; }
+  #map { height: 380px; width: 100%; background: #e8e3d8; }
+  #map .leaflet-tile { filter: none; }
   .sidebar { background: #0d1117; border-top: 1px solid #30363d; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
   .search-row { display: flex; gap: 6px; }
   input[type="text"], input[type="tel"], textarea, select {
@@ -75,6 +76,7 @@
   .stop-item { display: flex; align-items: center; gap: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 21px 56px 21px 9px; }
   .db-item { display: flex; align-items: center; gap: 8px; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 21px 56px 21px 9px; }
   .db-item.selected { background: #1c2d41; border-color: #58a6ff; }
+  .db-item:not(.marked-delete) { cursor: pointer; }
   .selected-badge { flex-shrink: 0; font-size: 10px; font-weight: 700; color: #79c0ff; background: #1f3b5b; border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
   .stop-badge { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: #388bfd; color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
   .stop-badge.depot { background: #a371f7; }
@@ -85,12 +87,42 @@
   .stop-remove-btn { flex-shrink: 0; background: transparent; color: #ff7b72; border: none; font-size: 16px; font-weight: 700; padding: 4px 6px; cursor: pointer; }
   .stop-item.completed { opacity: 0.55; }
   .stop-item.completed .stop-name { text-decoration: line-through; }
+  .stop-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) 40px; align-items: center; gap: 10px; flex: 0 1 360px; min-width: 0; }
+  .stop-phone-btn, .stop-nav-btn, .stop-done-btn, .stop-remove-btn { min-height: 42px; }
+  .stop-phone-btn { display: inline-flex; align-items: center; justify-content: center; background: #238636; color: #fff; border-radius: 7px; padding: 8px; text-decoration: none; }
+  .stop-phone-btn.no-phone { background: #21262d; color: #8b949e; cursor: not-allowed; }
+  .stop-phone-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .stop-nav-btn { padding: 8px 12px; }
+  .stop-done-btn { padding: 8px 12px; }
+  .stop-remove-btn { padding: 4px 8px; background: #21262d; color: #ff7b72; border-radius: 7px; }
+  .route-undo-btn { margin-left: auto; padding: 5px 8px; background: transparent; color: #8b949e; border: 1px solid #30363d; font-size: 12px; }
+  .route-undo-btn:not(:disabled) { color: #58a6ff; }
+  .route-undo-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .stop-item[draggable="true"] { cursor: grab; }
+  .stop-item.dragging { opacity: 0.45; }
+  .route-clear-modal { display: none; position: fixed; inset: 0; z-index: 2100; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.55); }
+  .route-clear-modal.show { display: flex; }
+  .route-clear-dialog { width: min(360px, 100%); padding: 18px; background: #161b22; border: 1px solid #30363d; border-radius: 10px; box-shadow: 0 12px 35px rgba(0,0,0,0.35); }
+  .route-clear-dialog-title { margin-bottom: 8px; color: #f0f6fc; font-size: 16px; font-weight: 700; }
+  .route-clear-dialog-message { margin-bottom: 16px; color: #c9d1d9; font-size: 14px; line-height: 1.5; }
+  .route-clear-dialog-actions { display: flex; gap: 8px; }
+  .route-clear-dialog-actions button { flex: 1; }
+  @media (max-width: 560px) {
+    .stop-item { flex-wrap: wrap; padding: 12px 9px; }
+    .stop-name { min-width: 0; }
+    .stop-actions { width: 100%; flex-basis: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)) 40px; padding-left: 38px; }
+  }
   .db-info { flex: 1; min-width: 0; }
   .db-info .db-name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .db-info .db-note { font-size: 11px; color: #7A7462; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .phone-link { color: #79c0ff; font-size: 12px; font-weight: 700; text-decoration: none; white-space: nowrap; padding: 4px 6px; border: 1px solid #1f6feb; border-radius: 4px; background: #12253f; }
-  .toggle-add-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: none; background: #238636; color: #fff; font-size: 18px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1; }
-  .toggle-add-btn.selected { background: #da3633; }
+  .phone-link { flex-shrink: 0; width: 32px; height: 32px; color: #fff; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border: 1px solid #2ea043; border-radius: 6px; background: #238636; }
+  .phone-link svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .db-action-btn { flex-shrink: 0; width: 32px; height: 32px; margin-left: 5px; border: 1px solid #30363d; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; line-height: 1; }
+  .db-action-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .db-action-btn.add { background: #238636; color: #fff; border-color: #2ea043; }
+  .db-action-btn.add.selected { background: #da3633; color: #fff; border-color: #f85149; }
+  .db-action-btn.edit { background: #21262d; color: #79c0ff; }
+  .db-action-btn:hover { filter: brightness(1.15); }
   .actions-row { display: flex; gap: 8px; }
   .actions-row button { flex: 1; }
   .result-box { background: #172b1b; border: 1px solid #238636; border-radius: 8px; padding: 10px 12px; display: none; }
@@ -107,6 +139,20 @@
   .db-list-arrow.collapsed { transform: rotate(-90deg); }
   .collapsible-body.collapsed { display: none; }
   .field-label { font-size: 11px; color: #8b949e; font-weight: 600; }
+  .endpoint-select-row { display: flex; align-items: center; gap: 8px; }
+  .endpoint-icon {
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #1f6feb;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .endpoint-icon svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .endpoint-select-row select { min-width: 0; }
   .nav-box { background: #161b22; color: #e6edf3; border-radius: 8px; padding: 12px; display: none; flex-direction: column; gap: 6px; }
   .nav-box.show { display: flex; }
   .nav-instruction { font-size: 16px; font-weight: 600; }
@@ -130,11 +176,12 @@
 <body>
 <div class="app">
   <header>
-    <h1>載貨路線規劃工具</h1>
-    <p>常用載貨點資料庫、路線規劃、逐站開啟 Google Maps 導航</p>
+    <h1>路線規劃器 2.0</h1>
+    <p class="app-version">更新:2026.9.12</p>
+    <p>常用地點資料庫、路線規劃、逐站開啟 Google Maps 導航</p>
   </header>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="db">載貨點資料庫</button>
+    <button class="tab-btn active" data-tab="db">地點資料庫</button>
     <button class="tab-btn" data-tab="route">今日路線</button>
   </div>
 
@@ -145,15 +192,21 @@
       <div class="panel active" id="panel-db">
         <div class="hint" style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
           <span>地圖預設收起，需要時再展開查看所有點位。</span>
-          <button class="btn-secondary" id="toggleDbMapBtn" style="padding:5px 10px; font-size:12px; white-space:nowrap;">顯示地圖</button>
+          <button class="btn-secondary" id="toggleDbMapBtn" style="padding:5px 10px; font-size:12px; white-space:nowrap;">隱藏地圖</button>
         </div>
 
-        <div style="font-size:13px; font-weight:600; margin:10px 0 6px;">已儲存的載貨點（<span id="dbCount">0</span>）</div>
+        <div style="font-size:13px; font-weight:600; margin:10px 0 6px;">已儲存的地點（<span id="dbCount">0</span>）</div>
         <button id="deleteBar">刪除 <span id="deleteBarCount">0</span> 個地點</button>
         <div class="search-row" style="margin-bottom:8px;">
           <input type="text" id="dbSearchFilter" placeholder="搜尋..." style="flex: 0 1 35%;" />
-          <button class="btn-secondary" id="openAddFormBtn" style="flex-shrink:0; white-space:nowrap;">＋ 新增載貨點</button>
-          <button class="btn-secondary" id="deleteModeToggleBtn" title="切換刪除模式" style="flex-shrink:0; white-space:nowrap;">🗑️ 刪除</button>
+          <select id="dbSortSelect" title="地點排序" style="flex: 0 1 150px;">
+            <option value="newest">新增日期：最新</option>
+            <option value="oldest">新增日期：最舊</option>
+            <option value="nameAsc">名稱：A～Z</option>
+            <option value="nameDesc">名稱：Z～A</option>
+          </select>
+          <button class="btn-secondary" id="openAddFormBtn" style="flex-shrink:0; white-space:nowrap;">＋ 新增地點</button>
+          <button class="btn-secondary" id="deleteModeToggleBtn" title="管理地點" style="flex-shrink:0; white-space:nowrap;">⚙️ 管理</button>
         </div>
         <div class="search-row" id="deleteSelectRow" style="display:none; align-items:center; gap:10px; margin-bottom:8px;">
           <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; white-space:nowrap;">
@@ -162,7 +215,7 @@
           <div style="font-size:13px; color:#7A7462;">已選 <span id="selectedCount">0</span> 個</div>
         </div>
         <ul class="db-list" id="dbList"></ul>
-        <div class="empty-state" id="dbEmpty">尚未儲存任何載貨點</div>
+        <div class="empty-state" id="dbEmpty">尚未儲存任何地點</div>
         <div class="hint" style="margin-top:8px;">資料儲存在這台電腦這個瀏覽器裡，換電腦或清除瀏覽器資料會遺失，建議定期用「匯出」備份。</div>
 
         <div class="actions-row">
@@ -191,7 +244,7 @@
           <div class="field-label">備註</div>
           <input type="text" id="dbNote" placeholder="其他備註（選填）" />
           <div class="actions-row">
-            <button class="btn-primary" id="dbSaveBtn">新增載貨點</button>
+            <button class="btn-primary" id="dbSaveBtn">新增地點</button>
             <button class="btn-secondary" id="dbCancelEditBtn" style="display:none;">取消編輯</button>
           </div>
           <div class="error-msg" id="dbError">請先輸入名稱，並完成定位（搜尋地址或點地圖）。</div>
@@ -199,23 +252,43 @@
       </div>
 
       <div class="panel" id="panel-route">
-        <div class="hint">出發地與終點設定一次即可長期沿用，之後只需從資料庫勾選中途要跑的載貨點。</div>
+        <div class="hint">出發地與終點設定一次即可長期沿用，之後只需從資料庫勾選中途要跑的地點。</div>
 
         <div class="form-box">
           <div class="field-label">出發地（固定，設定一次即可）</div>
-          <select id="startDbSelect"><option value="">-- 從資料庫選擇 --</option></select>
-          <div class="hint" id="startHint">尚未設定出發地，將以第一個加入的載貨點當作出發點</div>
+          <div class="endpoint-select-row">
+            <span class="endpoint-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M3 10.5 12 3l9 7.5"></path>
+                <path d="M5.5 9.5V21h13V9.5"></path>
+                <path d="M9.5 21v-6h5v6"></path>
+              </svg>
+            </span>
+            <select id="startDbSelect"><option value="">-- 從資料庫選擇 --</option></select>
+          </div>
+          <div class="hint" id="startHint">尚未設定出發地，將以第一個加入的地點當作出發點</div>
         </div>
 
         <div>
-          <div style="font-size:13px; font-weight:600; margin-bottom:6px;">今日途經點（<span id="stopCount">0</span>）</div>
+          <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; margin-bottom:6px;">
+            <span>今日途經點（<span id="stopCount">0</span>）</span>
+            <button class="route-undo-btn" id="routeUndoBtn" type="button" title="恢復今日路線上一個動作" aria-label="恢復今日路線上一個動作" disabled>↶ 恢復</button>
+          </div>
           <ul class="stop-list" id="stopList"></ul>
-          <div class="empty-state" id="emptyState">尚未選取任何載貨點</div>
+          <div class="empty-state" id="emptyState">尚未選取任何地點</div>
         </div>
 
         <div class="form-box">
-          <div class="field-label">終點（選填，未設定則路線在最後一個載貨點結束）</div>
-          <select id="endDbSelect"><option value="">-- 未設定 --</option></select>
+          <div class="field-label">終點（選填，未設定則路線在最後一個地點結束）</div>
+          <div class="endpoint-select-row">
+            <span class="endpoint-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 21V3"></path>
+                <path d="M5 4c4-2 7 2 12 0v9c-5 2-8-2-12 0"></path>
+              </svg>
+            </span>
+            <select id="endDbSelect"><option value="">-- 未設定 --</option></select>
+          </div>
           <div class="hint" id="endHint">未設定終點</div>
         </div>
         <div class="actions-row">
@@ -236,7 +309,7 @@
 
 <div id="addFormOverlay" style="display:none; position:fixed; inset:0; background:#0d1117; z-index:1500; flex-direction:column; overflow-y:auto;">
   <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#161b22; color:#fff; position:sticky; top:0; z-index:2; border-bottom:1px solid #30363d;">
-    <div style="font-weight:700; font-size:15px;" id="addFormOverlayTitle">新增載貨點</div>
+    <div style="font-weight:700; font-size:15px;" id="addFormOverlayTitle">新增地點</div>
     <button class="btn-secondary" id="addFormCloseBtn" style="padding:8px 14px;">✕ 關閉</button>
   </div>
   <div id="addFormMapSlot" style="width:100%;"></div>
@@ -245,7 +318,7 @@
 
 <div id="dupModalOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; padding:16px;">
   <div style="background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; max-width:360px; width:100%; display:flex; flex-direction:column; gap:10px;">
-    <div style="font-size:15px; font-weight:700; color:#f0f6fc;">發現重複座標的載貨點</div>
+    <div style="font-size:15px; font-weight:700; color:#f0f6fc;">發現重複座標的地點</div>
     <div class="hint" id="dupModalMessage">-</div>
     <button class="btn-primary" id="dupOverwriteBtn">覆蓋（用匯入的資料更新舊資料）</button>
     <button class="btn-secondary" id="dupKeepBothBtn">保留（新舊都留，新增為獨立項目）</button>
@@ -254,15 +327,34 @@
   </div>
 </div>
 
+<div class="route-clear-modal" id="routeClearModal" role="dialog" aria-modal="true" aria-labelledby="routeClearModalTitle">
+  <div class="route-clear-dialog">
+    <div class="route-clear-dialog-title" id="routeClearModalTitle">路線已完成</div>
+    <div class="route-clear-dialog-message">已完成所有路線，是否清空今日路線？</div>
+    <div class="route-clear-dialog-actions">
+      <button class="btn-secondary" id="routeKeepBtn" type="button">先保留</button>
+      <button class="btn-primary" id="routeConfirmClearBtn" type="button">清空路線</button>
+    </div>
+
+    </div>
+  </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
   var STORAGE_KEY = 'cargoRouteDB_v1';
   var ENDPOINT_KEY = 'cargoRouteEndpoints_v1';
+  var ROUTE_STOPS_KEY = 'cargoRouteStops_v1';
   var map = L.map('map').setView([23.7999, 120.6844], 13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
+  // 短期少量測試使用 OSM 官方圖磚；不預先下載，並降低縮放與更新請求量。
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    maxNativeZoom: 18,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    keepBuffer: 1,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'
   }).addTo(map);
 
   var db = [];
@@ -278,12 +370,18 @@
   var deleteMode = false;
   var pendingCoord = null;
   var previewMarker = null;
+  var routeHistory = [];
+  var maxRouteHistory = 30;
 
   function loadDB() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         db = JSON.parse(raw);
+        var legacyBaseTime = Date.now() - db.length;
+        db.forEach(function(d, index) {
+          if (!d.createdAt) d.createdAt = legacyBaseTime + index;
+        });
         var maxId = 0;
         db.forEach(function(d) { if (d.id > maxId) maxId = d.id; });
         nextDbId = maxId + 1;
@@ -310,6 +408,29 @@
     try {
       localStorage.setItem(ENDPOINT_KEY, JSON.stringify(routeSettings));
     } catch (e) {}
+  }
+
+  function loadRouteStops() {
+    try {
+      var raw = localStorage.getItem(ROUTE_STOPS_KEY);
+      if (!raw) return;
+      var savedStops = JSON.parse(raw);
+      if (!Array.isArray(savedStops)) return;
+      stops = savedStops;
+      var maxId = 0;
+      stops.forEach(function(s) { if (s.id > maxId) maxId = s.id; });
+      nextStopId = maxId + 1;
+    } catch (e) {
+      stops = [];
+    }
+  }
+
+  function saveRouteStops() {
+    try {
+      localStorage.setItem(ROUTE_STOPS_KEY, JSON.stringify(stops));
+    } catch (e) {
+      alert('今日路線儲存失敗，瀏覽器儲存空間可能已滿或不支援。');
+    }
   }
 
   function refreshEndpointSelects() {
@@ -405,17 +526,24 @@
     list.innerHTML = '';
 
     var query = (document.getElementById('dbSearchFilter').value || '').trim().toLowerCase();
-    var filtered = db.filter(function(d) {
+    var sortMode = document.getElementById('dbSortSelect').value;
+    var filtered = db.slice().filter(function(d) {
       if (!query) return true;
       var haystack = ((d.name || '') + ' ' + (d.address || '') + ' ' + (d.note || '')).toLowerCase();
       return haystack.indexOf(query) !== -1;
     });
+    filtered.sort(function(a, b) {
+      if (sortMode === 'oldest') return a.createdAt - b.createdAt;
+      if (sortMode === 'nameAsc') return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant');
+      if (sortMode === 'nameDesc') return String(b.name || '').localeCompare(String(a.name || ''), 'zh-Hant');
+      return b.createdAt - a.createdAt;
+    });
 
     if (db.length === 0) {
-      empty.textContent = '尚未儲存任何載貨點';
+      empty.textContent = '尚未儲存任何地點';
       empty.style.display = 'block';
     } else if (filtered.length === 0) {
-      empty.textContent = '沒有符合搜尋條件的載貨點';
+      empty.textContent = '沒有符合搜尋條件的地點';
       empty.style.display = 'block';
     } else {
       empty.style.display = 'none';
@@ -429,14 +557,34 @@
       li.innerHTML =
         '<div class="db-info"><div class="db-name">' + escapeHtml(d.name) + '</div>' +
         '<div class="db-note">' + escapeHtml(d.note || d.address || '') + '</div></div>' +
-        (d.phone ? '<a class="phone-link" href="tel:' + escapeHtml(String(d.phone).replace(/\s+/g, '')) + '">📞 ' + escapeHtml(d.phone) + '</a>' : '') +
-        '<button class="toggle-add-btn' + (isSelected ? ' selected' : '') + '" data-toggle="' + d.id + '" title="' + (isSelected ? '從今日路線移除' : '加入今日路線') + '">' + (isSelected ? '－' : '＋') + '</button>' +
-        '<button class="btn-link-text" data-edit="' + d.id + '" title="編輯">⚙️</button>' +
+        (d.phone ? '<a class="phone-link" href="tel:' + escapeHtml(String(d.phone).replace(/\s+/g, '')) + '" title="撥打 ' + escapeHtml(d.name) + '" aria-label="撥打 ' + escapeHtml(d.name) + '"><svg viewBox="0 0 24 24"><path d="M6.6 3.5 9 3l2 5-2.3 1.7a16 16 0 0 0 5.6 5.6L16 13l5 2-.5 2.4a2 2 0 0 1-2.2 1.6C10.7 18.1 5.9 13.3 4.9 5.7A2 2 0 0 1 6.6 3.5Z"></path></svg></a>' : '') +
+        (deleteMode ? '<button class="db-action-btn edit" data-edit="' + d.id + '" title="編輯地點" aria-label="編輯地點"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16v4Z"></path><path d="m13.5 6.5 4 4"></path></svg></button>' : '') +
         (deleteMode ? '<input type="checkbox" class="del-select-checkbox" data-select="' + d.id + '"' + (isMarked ? ' checked' : '') + ' />' : '');
       list.appendChild(li);
+      li.addEventListener('click', function() {
+        if (deleteMode) return;
+        var already = stops.some(function(s) { return s.dbId === d.id; });
+        if (already) {
+          saveRouteStateForUndo();
+          stops = stops.filter(function(s) { return s.dbId !== d.id; });
+        } else {
+          saveRouteStateForUndo();
+          stops.push({ id: nextStopId++, lat: d.lat, lng: d.lng, name: d.name, dbId: d.id, phone: d.phone || '' });
+        }
+        refreshStopList();
+        refreshMarkers();
+        refreshDbList();
+        hideResult();
+      });
     });
     list.querySelectorAll('[data-edit]').forEach(function(btn) {
-      btn.addEventListener('click', function() { startEditDb(parseInt(btn.getAttribute('data-edit'))); });
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        startEditDb(parseInt(btn.getAttribute('data-edit')));
+      });
+    });
+    list.querySelectorAll('.phone-link').forEach(function(link) {
+      link.addEventListener('click', function(e) { e.stopPropagation(); });
     });
     list.querySelectorAll('[data-select]').forEach(function(cb) {
       cb.addEventListener('change', function() {
@@ -447,27 +595,12 @@
         refreshDbList();
         refreshDeleteBar();
       });
+      cb.addEventListener('click', function(e) { e.stopPropagation(); });
     });
     if (deleteMode) {
       var allSelected = filtered.length > 0 && filtered.every(function(d) { return markedForDeleteIds.indexOf(d.id) !== -1; });
       document.getElementById('selectAllCheckbox').checked = allSelected;
     }
-    list.querySelectorAll('[data-toggle]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var id = parseInt(btn.getAttribute('data-toggle'));
-        var already = stops.some(function(s) { return s.dbId === id; });
-        if (already) {
-          stops = stops.filter(function(s) { return s.dbId !== id; });
-        } else {
-          var d = db.find(function(x) { return x.id === id; });
-          if (d) stops.push({ id: nextStopId++, lat: d.lat, lng: d.lng, name: d.name, dbId: d.id });
-        }
-        refreshStopList();
-        refreshMarkers();
-        refreshDbList();
-        hideResult();
-      });
-    });
   }
 
   function showPreviewMarker(lat, lng, label) {
@@ -506,7 +639,7 @@
     document.getElementById('deleteSelectRow').style.display = on ? 'flex' : 'none';
     var toggleBtn = document.getElementById('deleteModeToggleBtn');
     toggleBtn.classList.toggle('active', on);
-    toggleBtn.textContent = on ? '✕ 取消' : '🗑️ 刪除';
+    toggleBtn.textContent = on ? '✕ 完成管理' : '⚙️ 管理';
     if (on) document.getElementById('selectAllCheckbox').checked = false;
     refreshDbList();
     refreshDeleteBar();
@@ -552,6 +685,34 @@
   document.getElementById('dbSearchFilter').addEventListener('input', function() {
     refreshDbList();
   });
+  document.getElementById('dbSortSelect').addEventListener('change', function() {
+    refreshDbList();
+  });
+
+  function saveRouteStateForUndo() {
+    routeHistory.push(JSON.stringify(stops));
+    if (routeHistory.length > maxRouteHistory) routeHistory.shift();
+    updateUndoButton();
+  }
+
+  function updateUndoButton() {
+    var undoBtn = document.getElementById('routeUndoBtn');
+    if (undoBtn) undoBtn.disabled = routeHistory.length === 0;
+  }
+
+  function undoRouteAction() {
+    if (routeHistory.length === 0) return;
+    stops = JSON.parse(routeHistory.pop());
+    saveRouteStops();
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    refreshStopList();
+    refreshMarkers();
+    refreshDbList();
+    hideResult();
+    updateUndoButton();
+  }
+
+  document.getElementById('routeUndoBtn').addEventListener('click', undoRouteAction);
 
   // 記住 #map 與 #addFormBody 原本在畫面上的位置，開啟/關閉覆蓋層時要能正確搬回去
   var mapHomeParent = document.getElementById('map').parentNode;
@@ -560,7 +721,7 @@
   var formHomeNext = document.getElementById('addFormBody').nextSibling;
 
   function openAddForm(isEdit) {
-    document.getElementById('addFormOverlayTitle').textContent = isEdit ? '編輯載貨點' : '新增載貨點';
+    document.getElementById('addFormOverlayTitle').textContent = isEdit ? '編輯地點' : '新增地點';
     document.getElementById('addFormOverlay').style.display = 'flex';
     document.getElementById('addFormMapSlot').appendChild(document.getElementById('map'));
     document.getElementById('addFormFieldsSlot').appendChild(document.getElementById('addFormBody'));
@@ -587,8 +748,8 @@
     resetDbForm();
   });
 
-  // 載貨點資料庫頁面的地圖預設收起，按這個按鈕才展開/收起（不影響今日路線頁面的地圖顯示）
-  var dbMapExpanded = false;
+  // 地點資料庫頁面的地圖預設收起，按這個按鈕才展開/收起（不影響今日路線頁面的地圖顯示）
+  var dbMapExpanded = true;
 
   function updateMapVisibility() {
     var activeBtn = document.querySelector('.tab-btn.active');
@@ -670,7 +831,7 @@
     document.getElementById('dbPhone').value = '';
     document.getElementById('dbNote').value = '';
     document.getElementById('dbCoordHint').textContent = '尚未定位，請先按「定位」，或直接點地圖選位置';
-    document.getElementById('dbSaveBtn').textContent = '新增載貨點';
+    document.getElementById('dbSaveBtn').textContent = '新增地點';
     document.getElementById('dbCancelEditBtn').style.display = 'none';
     document.getElementById('dbError').classList.remove('show');
     clearPreviewMarker();
@@ -835,7 +996,7 @@
       refreshStopList();
       refreshMarkers();
     } else {
-      db.push({ id: nextDbId++, name: name, address: address, phone: phone, note: note, lat: pendingCoord.lat, lng: pendingCoord.lng });
+      db.push({ id: nextDbId++, name: name, address: address, phone: phone, note: note, lat: pendingCoord.lat, lng: pendingCoord.lng, createdAt: Date.now() });
     }
     saveDB();
     refreshDbList();
@@ -857,8 +1018,8 @@
     var ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 16 }, { wch: 24 }, { wch: 20 }];
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '載貨點');
-    XLSX.writeFile(wb, '載貨點備份_' + new Date().toISOString().slice(0, 10) + '.xlsx');
+    XLSX.utils.book_append_sheet(wb, ws, '地點');
+    XLSX.writeFile(wb, '地點備份_' + new Date().toISOString().slice(0, 10) + '.xlsx');
   });
 
   document.getElementById('importBtn').addEventListener('click', function() {
@@ -879,7 +1040,7 @@
   }
 
   function normalizeImportRow(row) {
-    var name = row['名稱'] || row['載貨點'] || row['地點'] || row.name || row.Name || '';
+    var name = row['名稱'] || row['地點'] || row.name || row.Name || '';
     var address = row['地址'] || row['地點地址'] || row.address || row.Address || '';
     var phone = row['電話'] || row['聯絡電話'] || row.phone || row.Phone || '';
     var note = row['備註'] || row['說明'] || row.note || row.Note || '';
@@ -919,7 +1080,7 @@
     var addedCount = 0, updatedCount = 0;
 
     newOnlyRows.forEach(function(row) {
-      db.push({ id: nextDbId++, name: row.name, address: row.address, phone: row.phone, note: row.note, lat: row.lat, lng: row.lng });
+      db.push({ id: nextDbId++, name: row.name, address: row.address, phone: row.phone, note: row.note, lat: row.lat, lng: row.lng, createdAt: Date.now() });
       addedCount++;
     });
 
@@ -939,7 +1100,7 @@
       saveEndpoints();
     } else if (mode === 'keepBoth') {
       duplicatePairs.forEach(function(pair) {
-        db.push({ id: nextDbId++, name: pair.row.name, address: pair.row.address, phone: pair.row.phone, note: pair.row.note, lat: pair.row.lat, lng: pair.row.lng });
+        db.push({ id: nextDbId++, name: pair.row.name, address: pair.row.address, phone: pair.row.phone, note: pair.row.note, lat: pair.row.lat, lng: pair.row.lng, createdAt: Date.now() });
         addedCount++;
       });
     }
@@ -991,7 +1152,7 @@
 
     // 有重複座標，跳出視窗詢問處理方式
     document.getElementById('dupModalMessage').textContent =
-      '本次匯入 ' + validRows.length + ' 筆資料中，有 ' + duplicatePairs.length + ' 筆座標與資料庫裡既有的載貨點重複（10公尺內視為同一地點），其餘 ' + newOnlyRows.length + ' 筆為全新資料會直接新增。請選擇重複資料的處理方式：';
+      '本次匯入 ' + validRows.length + ' 筆資料中，有 ' + duplicatePairs.length + ' 筆座標與資料庫裡既有的地點重複（10公尺內視為同一地點），其餘 ' + newOnlyRows.length + ' 筆為全新資料會直接新增。請選擇重複資料的處理方式：';
     document.getElementById('dupModalOverlay').style.display = 'flex';
 
     function closeModal() {
@@ -1063,8 +1224,8 @@
     stops.forEach(function(s, idx) {
       var icon = L.divIcon({
         className: '',
-        html: '<div style="width:26px;height:26px;border-radius:50%;background:#4A5D45;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">' + (idx + 1) + '</div>',
-        iconSize: [26, 26], iconAnchor: [13, 13]
+        html: '<div style="width:30px;height:30px;border-radius:50%;background:#1f6feb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">' + (idx + 1) + '</div>',
+        iconSize: [30, 30], iconAnchor: [15, 15]
       });
       var marker = L.marker([s.lat, s.lng], { icon: icon }).addTo(map);
       marker.bindPopup(s.name);
@@ -1082,8 +1243,8 @@
     if (routeSettings.start) {
       var sIcon = L.divIcon({
         className: '',
-        html: '<div style="width:28px;height:28px;border-radius:50%;background:#C89B3C;color:#2C1E05;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">起</div>',
-        iconSize: [28, 28], iconAnchor: [14, 14]
+        html: '<div style="width:32px;height:32px;border-radius:50%;background:#1f6feb;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"><svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5.5 9.5V21h13V9.5"></path><path d="M9.5 21v-6h5v6"></path></svg></div>',
+        iconSize: [32, 32], iconAnchor: [16, 16]
       });
       startMarker = L.marker([routeSettings.start.lat, routeSettings.start.lng], { icon: sIcon }).addTo(map);
       startMarker.bindPopup('出發地：' + routeSettings.start.name);
@@ -1091,8 +1252,8 @@
     if (routeSettings.end) {
       var eIcon = L.divIcon({
         className: '',
-        html: '<div style="width:28px;height:28px;border-radius:50%;background:#A34A3A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);">終</div>',
-        iconSize: [28, 28], iconAnchor: [14, 14]
+        html: '<div style="width:32px;height:32px;border-radius:50%;background:#1f6feb;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.35);"><svg viewBox="0 0 24 24" style="width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;"><path d="M5 21V3"></path><path d="M5 4c4-2 7 2 12 0v9c-5 2-8-2-12 0"></path></svg></div>',
+        iconSize: [32, 32], iconAnchor: [16, 16]
       });
       endMarker = L.marker([routeSettings.end.lat, routeSettings.end.lng], { icon: eIcon }).addTo(map);
       endMarker.bindPopup('終點：' + routeSettings.end.name);
@@ -1105,15 +1266,51 @@
     document.getElementById('stopCount').textContent = stops.length;
     list.innerHTML = '';
     empty.style.display = stops.length === 0 ? 'block' : 'none';
+    saveRouteStops();
     stops.forEach(function(s, idx) {
       var li = document.createElement('li');
       li.className = 'stop-item' + (s.completed ? ' completed' : '');
+      li.draggable = true;
+      li.setAttribute('data-stop-id', s.id);
+      li.title = '可拖曳調整路線順序';
       li.innerHTML = '<div class="stop-badge">' + (idx + 1) + '</div>' +
         '<div class="stop-name">' + escapeHtml(s.name) + '</div>' +
-        '<button class="stop-nav-btn" data-nav="' + s.id + '" aria-label="開啟 Google Maps 導航至 ' + escapeHtml(s.name) + '">開啟導航</button>' +
+        '<div class="stop-actions">' +
+        (s.phone ? '<a class="stop-phone-btn" href="tel:' + escapeHtml(String(s.phone).replace(/\s+/g, '')) + '" title="撥打 ' + escapeHtml(s.name) + '" aria-label="撥打 ' + escapeHtml(s.name) + '"><svg viewBox="0 0 24 24"><path d="M6.6 3.5 9 3l2 5-2.3 1.7a16 16 0 0 0 5.6 5.6L16 13l5 2-.5 2.4a2 2 0 0 1-2.2 1.6C10.7 18.1 5.9 13.3 4.9 5.7A2 2 0 0 1 6.6 3.5Z"></path></svg></a>' : '<button type="button" class="stop-phone-btn no-phone" disabled title="沒有電話資料" aria-label="' + escapeHtml(s.name) + '沒有電話資料"><svg viewBox="0 0 24 24"><path d="M6.6 3.5 9 3l2 5-2.3 1.7a16 16 0 0 0 5.6 5.6L16 13l5 2-.5 2.4a2 2 0 0 1-2.2 1.6C10.7 18.1 5.9 13.3 4.9 5.7A2 2 0 0 1 6.6 3.5Z"></path></svg></button>') +
+        '<button class="stop-nav-btn" data-nav="' + s.id + '" aria-label="開啟 Google Maps 導航至 ' + escapeHtml(s.name) + '">導航</button>' +
         '<button class="stop-done-btn' + (s.completed ? ' done' : '') + '" data-done="' + s.id + '">' + (s.completed ? '✓ 完成' : '完成') + '</button>' +
-        '<button class="stop-remove-btn" data-id="' + s.id + '" title="移除">✕</button>';
+        '<button class="stop-remove-btn" data-id="' + s.id + '" title="移除" aria-label="移除 ' + escapeHtml(s.name) + '">✕</button>' +
+        '</div>';
       list.appendChild(li);
+    });
+    var draggedId = null;
+    list.querySelectorAll('.stop-item').forEach(function(item) {
+      item.addEventListener('dragstart', function() {
+        draggedId = parseInt(item.getAttribute('data-stop-id'));
+        item.classList.add('dragging');
+      });
+      item.addEventListener('dragend', function() {
+        item.classList.remove('dragging');
+        draggedId = null;
+      });
+      item.addEventListener('dragover', function(e) {
+        e.preventDefault();
+      });
+      item.addEventListener('drop', function(e) {
+        e.preventDefault();
+        var targetId = parseInt(item.getAttribute('data-stop-id'));
+        if (!draggedId || draggedId === targetId) return;
+        var fromIndex = stops.findIndex(function(s) { return s.id === draggedId; });
+        var toIndex = stops.findIndex(function(s) { return s.id === targetId; });
+        if (fromIndex < 0 || toIndex < 0) return;
+        saveRouteStateForUndo();
+        var moved = stops.splice(fromIndex, 1)[0];
+        stops.splice(toIndex, 0, moved);
+        saveRouteStops();
+        refreshStopList();
+        refreshMarkers();
+        hideResult();
+      });
     });
     list.querySelectorAll('[data-nav]').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -1131,13 +1328,16 @@
         var id = parseInt(btn.getAttribute('data-done'));
         var s = stops.find(function(x) { return x.id === id; });
         if (!s) return;
+        saveRouteStateForUndo();
         s.completed = !s.completed;
         refreshStopList();
+        if (s.completed && stops.length > 0 && stops.every(function(stop) { return stop.completed; })) showRouteClearModal();
       });
     });
     list.querySelectorAll('.stop-remove-btn').forEach(function(btn) {
       btn.addEventListener('click', function() {
         var id = parseInt(btn.getAttribute('data-id'));
+        saveRouteStateForUndo();
         stops = stops.filter(function(s) { return s.id !== id; });
         refreshStopList();
         refreshMarkers();
@@ -1155,20 +1355,45 @@
   }
 
   function addStop(lat, lng, name, dbId) {
-    stops.push({ id: nextStopId++, lat: lat, lng: lng, name: name, dbId: dbId });
+    saveRouteStateForUndo();
+    stops.push({ id: nextStopId++, lat: lat, lng: lng, name: name, dbId: dbId, phone: '' });
     refreshStopList();
     refreshMarkers();
     refreshDbList();
     hideResult();
   }
 
-  document.getElementById('clearBtn').addEventListener('click', function() {
+  function clearTodayRoute() {
     stops = [];
+    localStorage.removeItem(ROUTE_STOPS_KEY);
+    routeHistory = [];
+    updateUndoButton();
     refreshStopList();
     refreshMarkers();
     refreshDbList();
     hideResult();
     if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    localStorage.removeItem(ROUTE_STOPS_KEY);
+  }
+
+  function showRouteClearModal() {
+    document.getElementById('routeClearModal').classList.add('show');
+  }
+
+  function hideRouteClearModal() {
+    document.getElementById('routeClearModal').classList.remove('show');
+  }
+
+  document.getElementById('routeKeepBtn').addEventListener('click', hideRouteClearModal);
+  document.getElementById('routeConfirmClearBtn').addEventListener('click', function() {
+    hideRouteClearModal();
+    clearTodayRoute();
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function() {
+    if (stops.length === 0) return;
+    saveRouteStateForUndo();
+    clearTodayRoute();
   });
 
   function hideResult() {
@@ -1281,6 +1506,7 @@
       var startCount = built.hasStart ? 1 : 0;
       var endCount = built.hasEnd ? 1 : 0;
       stops = orderedAll.slice(startCount, orderedAll.length - endCount);
+      saveRouteStops();
       refreshStopList();
       refreshMarkers();
       refreshDbList();
@@ -1317,7 +1543,8 @@
         address: '',
         note: '預設出發地',
         lat: 23.836946814809462,
-        lng: 120.70398829426018
+        lng: 120.70398829426018,
+        createdAt: Date.now()
       };
       db.push(entry);
       saveDB();
@@ -1335,6 +1562,7 @@
 
   loadDB();
   loadEndpoints();
+  loadRouteStops();
   ensureDefaultEndpoints();
   refreshDbList();
   refreshDbMarkers();

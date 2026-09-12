@@ -1,7 +1,7 @@
 {
-  "name": "載貨路線規劃工具",
-  "short_name": "載貨路線",
-  "description": "載貨點資料庫、今日路線規劃與逐站導航工具",
+  "name": "路線規劃器 2.0",
+  "short_name": "路線規劃器",
+  "description": "地點資料庫、今日路線規劃與逐站導航工具",
   "lang": "zh-Hant",
   "start_url": "./index.html",
   "scope": "./",
